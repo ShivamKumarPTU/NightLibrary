@@ -1,0 +1,34 @@
+FUTURE FEATURE UPDATE
+
+1. Hide App Functionality
+3. Proper applying auth layer
+4.changing secureActivity to Fragment
+5.Features Supporting Video Downloads
+Built-in Private Browser: Offers an incognito-style experience that does not leave browsing history, cookies, or cache.
+Video Detection: When browsing, the app often detects video files automatically, prompting the user with a download option.
+Ad-Blocker: Many vault browsers include an ad-blocker to improve the download experience by blocking pop-ups.
+Support for Password-Protected Sites: Some browsers within vault apps can handle authentication for private video sites.
+6. When media get downloaded like google chrome the progress bar should be there but with a tick icon
+6.a when user click on it redirect to that video in recycler view in chip"videos" or it should start play in "SecureVideoActivity.kt"
+
+
+## What I learn in this journey of developing NightLibrary
+## What mistake I have done in this
+## Feature that need improvement
+
+
+*********************************** Future Updates ******************************************
+
+///   Making Extraction Faster
+///   Making import module faster
+///   Sharing Faster
+///   Search Bar in each chip to search for specific file
+///   Contact should share as when we share contact on whatsapp or when we export contact from phone
+///   Add  a Select All feature in ManageContact,ManagePassword,audio,image,video,pdf for share ,delete
+///
+
+********************************** My Learning ***********************************************
+
+// In activity If I am preventing it from taking screenshot
+then it don't means that dialog box appearing is also getting hide
+it's create another window on top of existing window

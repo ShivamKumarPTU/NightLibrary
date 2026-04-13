@@ -1,0 +1,133 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/bg_primary"
+    android:orientation="vertical"
+    tools:context=".ImportMediaFragment">
+
+    <!-- Toolbar -->
+    <com.google.android.material.appbar.MaterialToolbar
+        android:id="@+id/toolbar_import_media"
+        android:layout_width="match_parent"
+        android:layout_height="?attr/actionBarSize"
+        android:layout_marginTop="24dp"
+        app:navigationIcon="@drawable/ic_arrow_left_with_bg"
+        app:title="Import Media"
+        app:titleTextAppearance="@style/ToolbarTitle"
+        app:titleTextColor="@color/text_primary" />
+
+    <!-- FIX: Divider below the Toolbar -->
+    <View
+        android:id="@+id/toolbar_divider"
+        android:layout_width="match_parent"
+        android:layout_height="1dp"
+        android:background="@color/border_primary" />
+
+    <!-- "Add From Gallery" Card -->
+    <com.google.android.material.card.MaterialCardView
+        android:id="@+id/card_add_from_gallery"
+        style="@style/SettingsCard"
+        android:layout_marginStart="16dp"
+        android:layout_marginEnd="16dp"
+        android:layout_marginTop="24dp"> <!-- Adjusted margin -->
+        <LinearLayout style="@style/FocusCardContent">
+
+            <FrameLayout style="@style/FocusIconContainer">
+
+                <ImageView
+                    style="@style/FocusIcon"
+                    android:src="@drawable/ic_gallery" />
+            </FrameLayout>
+
+            <LinearLayout style="@style/FocusTextContainer">
+
+                <TextView
+                    style="@style/FocusTitle"
+                    android:text="Add From Files" />
+
+                <TextView
+                    style="@style/FocusSubtitle"
+                    android:text="Import photos, videos, audio, documents" />
+            </LinearLayout>
+        </LinearLayout>
+    </com.google.android.material.card.MaterialCardView>
+
+
+    <!-- "Capture From Camera" Card -->
+    <com.google.android.material.card.MaterialCardView
+        android:id="@+id/card_capture_from_camera"
+        android:layout_marginStart="16dp"
+        android:layout_marginEnd="16dp"
+        style="@style/SettingsCard">
+
+        <LinearLayout style="@style/FocusCardContent">
+
+            <FrameLayout style="@style/FocusIconContainer">
+
+                <ImageView
+                    style="@style/FocusIcon"
+                    android:src="@drawable/ic_camera" />
+            </FrameLayout>
+
+            <LinearLayout style="@style/FocusTextContainer">
+
+                <TextView
+                    style="@style/FocusTitle"
+                    android:text="Capture From Camera" />
+
+                <TextView
+                    style="@style/FocusSubtitle"
+                    android:text="Take a new photo or video" />
+            </LinearLayout>
+        </LinearLayout>
+    </com.google.android.material.card.MaterialCardView>
+
+    <!-- FIX: 'OR' Divider Section -->
+    <LinearLayout
+        android:id="@+id/or_divider_layout"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="32dp"
+        android:layout_marginBottom="32dp"
+        android:gravity="center_vertical"
+        android:orientation="horizontal">
+
+        <View
+            android:layout_width="0dp"
+            android:layout_height="1dp"
+            android:layout_weight="1"
+            android:background="@color/border_primary" />
+
+        <TextView
+            android:id="@+id/orText"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="16dp"
+            android:layout_marginEnd="16dp"
+            android:text="OR"
+            android:textColor="@color/text_tertiary" />
+
+        <View
+            android:layout_width="0dp"
+            android:layout_height="1dp"
+            android:layout_weight="1"
+            android:background="@color/border_primary" />
+    </LinearLayout>
+
+    <!-- "Download From Link" Button -->
+    <com.google.android.material.button.MaterialButton
+        android:id="@+id/button_download_from_link"
+        style="@style/PinButtonStyle"
+        android:layout_width="match_parent"
+        android:layout_height="60dp"
+        android:layout_marginStart="16dp"
+        android:layout_marginEnd="16dp"
+        android:text="Download From Link"
+        android:textColor="@color/text_secondary"
+        app:backgroundTint="@color/bg_secondary"
+        app:icon="@null" />
+
+</LinearLayout>

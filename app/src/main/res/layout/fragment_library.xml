@@ -1,0 +1,91 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/bg_primary"
+    android:padding="24dp"
+    tools:context=".libraryFragment">
+
+    <!-- Header: Library -->
+    <TextView
+        android:id="@+id/tv_library_header"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Library"
+        android:textColor="@color/text_primary"
+        android:textSize="28sp"
+        android:textStyle="bold"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent" />
+
+    <!-- Sub-header: Your saved content -->
+    <TextView
+        android:id="@+id/tv_library_subheader"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="4dp"
+        android:text="Your saved content"
+        android:textColor="@color/text_secondary"
+        android:textSize="16sp"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/tv_library_header" />
+
+    <!--
+        This is the "empty state" view.
+        It's constrained to the center of the screen.
+        You can show/hide this view group based on whether the library has items.
+    -->
+    <LinearLayout
+        android:id="@+id/empty_state_layout"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:gravity="center"
+        android:orientation="vertical"
+        android:visibility="visible"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/tv_library_subheader">
+
+        <!-- You could optionally add an icon here if you want -->
+        <!--
+        <ImageView
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:src="@drawable/ic_empty_library"
+            app:tint="@color/text_muted"
+            android:layout_marginBottom="16dp"/>
+        -->
+
+        <TextView
+            android:id="@+id/tv_empty_message"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Your reading library will appear here"
+            android:textColor="@color/text_muted"
+            android:textSize="16sp" />
+
+    </LinearLayout>
+
+    <!--
+        A RecyclerView would go here to display the library items.
+        It would initially be hidden. When there is content, you would
+        hide the 'empty_state_layout' and show this RecyclerView.
+    -->
+    <!--
+    <androidx.recyclerview.widget.RecyclerView
+        android:id="@+id/library_recycler_view"
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        android:layout_marginTop="24dp"
+        android:visibility="gone"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/tv_library_subheader"
+        tools:listitem="@layout/item_library_book" />
+    -->
+
+</androidx.constraintlayout.widget.ConstraintLayout>

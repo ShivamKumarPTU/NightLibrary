@@ -1,0 +1,200 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/bg_primary"
+    android:fillViewport="true"
+    android:scrollbars="none"
+    tools:context=".settingsFragment">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:paddingTop="24dp"
+        android:paddingBottom="24dp">
+
+        <!-- Header: Settings -->
+        <TextView
+            android:id="@+id/tv_settings_header"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="24dp"
+            android:layout_marginEnd="24dp"
+            android:text="Settings"
+            android:textColor="@color/text_primary"
+            android:textSize="28sp"
+            android:textStyle="bold" />
+
+        <!-- ========================= -->
+        <!-- Quick Access Section -->
+        <!-- ========================= -->
+        <TextView
+            style="@style/SettingsSectionHeader"
+            android:text="Quick Access" />
+
+        <com.google.android.material.card.MaterialCardView
+            android:layout_marginEnd="16dp"
+            android:layout_marginStart="16dp"
+            style="@style/SettingsCard">
+
+            <androidx.constraintlayout.widget.ConstraintLayout style="@style/SettingsRowContainer">
+
+                <FrameLayout
+                    android:id="@+id/container_quick_launcher"
+                    style="@style/SettingsIconContainer"
+                    app:layout_constraintBottom_toBottomOf="parent"
+                    app:layout_constraintStart_toStartOf="parent"
+                    app:layout_constraintTop_toTopOf="parent">
+
+                    <ImageView
+                        style="@style/SettingsIcon"
+                        app:tint="@color/text_secondary"
+                        android:src="@drawable/ic_quicklauncher"
+                        tools:ignore="ContentDescription" />
+                </FrameLayout>
+
+                <LinearLayout
+                    style="@style/SettingsTextContainer"
+                    app:layout_constraintBottom_toBottomOf="parent"
+                    app:layout_constraintEnd_toStartOf="@id/switch_quick_launcher"
+                    app:layout_constraintStart_toEndOf="@id/container_quick_launcher"
+                    app:layout_constraintTop_toTopOf="parent">
+
+                    <TextView
+                        style="@style/SettingsTitle"
+                        android:text="Enable Floating Quick Launcher" />
+
+                    <TextView
+                        style="@style/SettingsSubtitle"
+                        android:text="Optional on-screen bubble for faster vault access" />
+                </LinearLayout>
+
+                <com.google.android.material.switchmaterial.SwitchMaterial
+                    android:id="@+id/switch_quick_launcher"
+                    style="@style/SettingsSwitch"
+                    app:layout_constraintBottom_toBottomOf="parent"
+                    app:layout_constraintEnd_toEndOf="parent"
+                    app:layout_constraintTop_toTopOf="parent" />
+            </androidx.constraintlayout.widget.ConstraintLayout>
+        </com.google.android.material.card.MaterialCardView>
+
+
+
+        <!-- ========================= -->
+        <!-- Security Section -->
+        <!-- ========================= -->
+        <TextView
+            style="@style/SettingsSectionHeader"
+            android:text="Security" />
+
+        <!-- Emergency Lock -->
+        <com.google.android.material.card.MaterialCardView
+            android:layout_marginEnd="16dp"
+            android:layout_marginStart="16dp"
+            style="@style/SettingsCard">
+
+            <androidx.constraintlayout.widget.ConstraintLayout style="@style/SettingsRowContainer">
+
+                <FrameLayout
+                    android:id="@+id/container_emergency_lock"
+                    style="@style/SettingsIconContainer"
+                    app:layout_constraintBottom_toBottomOf="parent"
+                    app:layout_constraintStart_toStartOf="parent"
+                    app:layout_constraintTop_toTopOf="parent">
+
+                    <ImageView
+                        style="@style/SettingsIcon"
+                        app:tint="@color/text_secondary"
+                        android:src="@drawable/ic_emergencylock"
+                        tools:ignore="ContentDescription" />
+                </FrameLayout>
+
+                <LinearLayout
+                    style="@style/SettingsTextContainer"
+                    app:layout_constraintBottom_toBottomOf="parent"
+                    app:layout_constraintEnd_toStartOf="@id/switch_emergencyLock"
+                    app:layout_constraintStart_toEndOf="@id/container_emergency_lock"
+                    app:layout_constraintTop_toTopOf="parent">
+
+                    <TextView
+                        style="@style/SettingsTitle"
+                        android:text="Emergency Lock" />
+
+                    <TextView
+                        style="@style/SettingsSubtitle"
+                        android:text="Shake to instantly lock vault" />
+                </LinearLayout>
+
+                <com.google.android.material.switchmaterial.SwitchMaterial
+                    android:id="@+id/switch_emergencyLock"
+                    style="@style/SettingsSwitch"
+                    app:layout_constraintBottom_toBottomOf="parent"
+                    app:layout_constraintEnd_toEndOf="parent"
+                    app:layout_constraintTop_toTopOf="parent" />
+            </androidx.constraintlayout.widget.ConstraintLayout>
+        </com.google.android.material.card.MaterialCardView>
+
+
+        <!-- Enable Biometric -->
+        <com.google.android.material.card.MaterialCardView
+            android:layout_marginEnd="16dp"
+            android:layout_marginStart="16dp"
+            style="@style/SettingsCard">
+
+            <androidx.constraintlayout.widget.ConstraintLayout style="@style/SettingsRowContainer">
+
+                <FrameLayout
+                    android:id="@+id/container_biometric"
+                    style="@style/SettingsIconContainer"
+                    app:layout_constraintBottom_toBottomOf="parent"
+                    app:layout_constraintStart_toStartOf="parent"
+                    app:layout_constraintTop_toTopOf="parent">
+
+                    <ImageView
+                        style="@style/SettingsIcon"
+                        android:layout_width="17dp"
+                        android:layout_height="15dp"
+                        android:src="@drawable/fingerprint"
+                        app:tint="@color/text_secondary"
+                        tools:ignore="ContentDescription" />
+                </FrameLayout>
+
+                <LinearLayout
+                    style="@style/SettingsTextContainer"
+                    app:layout_constraintBottom_toBottomOf="parent"
+                    app:layout_constraintEnd_toStartOf="@id/switch_biometric"
+                    app:layout_constraintStart_toEndOf="@id/container_biometric"
+                    app:layout_constraintTop_toTopOf="parent">
+
+                    <TextView
+                        style="@style/SettingsTitle"
+                        android:text="Enable Biometric" />
+
+                    <TextView
+                        style="@style/SettingsSubtitle"
+                        android:text="Fingerprint authentication" />
+                </LinearLayout>
+
+                <com.google.android.material.switchmaterial.SwitchMaterial
+                    android:id="@+id/switch_biometric"
+                    style="@style/SettingsSwitch"
+                    app:layout_constraintBottom_toBottomOf="parent"
+                    app:layout_constraintEnd_toEndOf="parent"
+                    app:layout_constraintTop_toTopOf="parent" />
+            </androidx.constraintlayout.widget.ConstraintLayout>
+        </com.google.android.material.card.MaterialCardView>
+
+        <!-- App Version Footer -->
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center_horizontal"
+            android:layout_marginTop="32dp"
+            android:text="NightVault v1.0.0"
+            android:textColor="@color/text_muted"
+            android:textSize="12sp" />
+    </LinearLayout>
+</ScrollView>

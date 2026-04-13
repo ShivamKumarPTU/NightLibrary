@@ -1,0 +1,243 @@
+<navigation xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/nav_graph"
+    app:startDestination="@id/splashFragment">
+
+    <!-- Splash Fragment decides where to go next -->
+    <fragment
+        android:id="@+id/splashFragment"
+        android:name="com.example.nightlibrary.SplashFragment"
+        android:label="SplashFragment" >
+        <action
+            android:id="@+id/action_splashFragment_to_onboardingScreen1Fragment"
+            app:destination="@id/onboardingScreen1Fragment"
+            app:popUpTo="@id/splashFragment"
+            app:popUpToInclusive="true" />
+        <action
+            android:id="@+id/action_splashFragment_to_homeFragment"
+            app:destination="@id/homeFragment"
+            app:popUpTo="@id/splashFragment"
+            app:popUpToInclusive="true" />
+        <action
+            android:id="@+id/action_splashFragment_to_biometricFragment"
+            app:popUpTo="@id/splashFragment"
+            app:popUpToInclusive="true"
+            app:destination="@id/biometricFragment" />
+        <action
+            android:id="@+id/action_splashFragment_to_confirmPinFragment"
+            app:popUpTo="@id/splashFragment"
+            app:popUpToInclusive="true"
+            app:destination="@id/confirmPinFragment" />
+
+    </fragment>
+
+    <!-- Onboarding and PIN Flow -->
+    <fragment
+        android:id="@+id/onboardingScreen1Fragment"
+        android:name="com.example.nightlibrary.OnboardingScreen1"
+        android:label="OnboardingScreen1Fragment">
+
+        <action
+            android:id="@+id/action_onboardingScreen1Fragment_to_onboardingScreen2"
+            app:popUpTo="@id/onboardingScreen1Fragment"
+            app:popUpToInclusive="true"
+            app:destination="@id/onboardingScreen2"/>
+        <action
+            android:id="@+id/action_onboardingScreen1Fragment_to_createPinFragment"
+            app:popUpTo="@id/onboardingScreen1Fragment"
+            app:popUpToInclusive="true"
+            app:destination="@id/createPinFragment" />
+    </fragment>
+    <fragment
+        android:id="@+id/createPinFragment"
+        android:name="com.example.nightlibrary.createPinFragment"
+        android:label="CreatePinFragment">
+        <action
+            android:id="@+id/createPin_to_confirmPin"
+            app:destination="@id/confirmPinFragment" />
+    </fragment>
+    <fragment
+        android:id="@+id/confirmPinFragment"
+        android:name="com.example.nightlibrary.ConfirmPinFragment"
+        android:label="ConfirmPinFragment">
+        <argument
+            android:name="createdPin"
+            android:defaultValue="@null"
+            app:nullable="true"
+            app:argType="string" />
+        <action
+            android:id="@+id/action_confirmPin_to_home"
+            app:destination="@id/homeFragment"
+            app:popUpTo="@id/onboardingScreen1Fragment"
+            app:popUpToInclusive="true"/>
+        <action
+            android:id="@+id/action_confirmPinFragment_to_biometricFragment"
+            app:popUpTo="@id/onboardingScreen1Fragment"
+            app:popUpToInclusive="true"
+            app:destination="@id/biometricFragment" />
+        <action
+            android:id="@+id/action_confirmPinFragment_to_onboardingScreen1Fragment"
+            app:popUpTo="@id/onboardingScreen1Fragment"
+            app:popUpToInclusive="true"
+            app:destination="@id/onboardingScreen1Fragment" />
+
+    </fragment>
+
+    <!-- Main App Fragments (with Bottom Nav) -->
+    <fragment
+        android:id="@+id/homeFragment"
+        android:name="com.example.nightlibrary.homeFragment"
+        android:label="HomeFragment" >
+        <action
+            android:id="@+id/action_homeFragment_to_readingFragment"
+
+            app:destination="@id/readingFragment" />
+        <action
+            android:id="@+id/action_homeFragment_to_libraryFragment"
+            app:destination="@id/libraryFragment" />
+        <action
+            android:id="@+id/action_homeFragment_to_settingsFragment"
+            app:destination="@id/settingsFragment" />
+
+    </fragment>
+    <fragment
+        android:id="@+id/biometricFragment"
+        android:name="com.example.nightlibrary.BiometricFragment"
+        android:label="fragment_biometric"
+        tools:layout="@layout/fragment_biometric" >
+        <argument
+            android:name="mode"
+            app:argType="com.example.nightlibrary.security.BiometricMode" />
+        <action
+            android:id="@+id/action_biometricFragment_to_homeFragment"
+            app:popUpTo="@id/biometricFragment"
+            app:popUpToInclusive="true"
+            app:destination="@id/homeFragment" />
+        <action
+            android:id="@+id/action_biometricFragment_to_confirmPinFragment"
+            app:popUpTo="@id/biometricFragment"
+            app:popUpToInclusive="true"
+            app:destination="@id/confirmPinFragment" />
+        <action
+            android:id="@+id/action_biometricFragment_to_createPinFragment"
+            app:popUpTo="@id/biometricFragment"
+            app:popUpToInclusive="true"
+            app:destination="@id/createPinFragment" />
+    </fragment>
+    <fragment
+        android:id="@+id/readingFragment"
+        android:name="com.example.nightlibrary.ReadingFragment"
+        android:label="fragment_reading"
+        tools:layout="@layout/fragment_reading" >
+        <action
+            android:id="@+id/action_readingFragment_to_secretVaultFragment"
+            app:destination="@id/secretVaultFragment" />
+    </fragment>
+    <fragment
+        android:id="@+id/secretVaultFragment"
+        android:name="com.example.nightlibrary.SecretVaultFragment"
+        android:label="fragment_secret_vault"
+        tools:layout="@layout/fragment_secret_vault" >
+
+        <action
+            android:id="@+id/action_secretVaultFragment_to_managePassword"
+            app:destination="@id/managePassword" />
+        <action
+            android:id="@+id/action_secretVaultFragment_to_manageContact"
+            app:destination="@id/manageContact" />
+        <action
+            android:id="@+id/action_secretVaultFragment_to_import_media"
+            app:destination="@id/import_media" />
+    </fragment>
+    <fragment
+        android:id="@+id/onboardingScreen2"
+        android:name="com.example.nightlibrary.OnboardingScreen2"
+        android:label="fragment_onboarding_screen2"
+        tools:layout="@layout/fragment_onboarding_screen2" >
+        <action
+            android:id="@+id/action_onboardingScreen2_to_onboardingScreen3"
+            app:destination="@id/onboardingScreen3" />
+        <action
+            android:id="@+id/action_onboardingScreen2_to_createPinFragment"
+            app:popUpTo="@id/onboardingScreen2"
+            app:popUpToInclusive="true"
+            app:destination="@id/createPinFragment" />
+    </fragment>
+    <fragment
+        android:id="@+id/onboardingScreen3"
+        android:name="com.example.nightlibrary.OnboardingScreen3"
+        android:label="fragment_onboarding_screen3"
+        tools:layout="@layout/fragment_onboarding_screen3" >
+        <action
+            android:id="@+id/action_onboardingScreen3_to_onboardingScreen4"
+            app:destination="@id/onboardingScreen4" />
+        <action
+            android:id="@+id/action_onboardingScreen3_to_createPinFragment"
+            app:popUpTo="@id/onboardingScreen3"
+            app:popUpToInclusive="true"
+            app:destination="@id/createPinFragment" />
+    </fragment>
+
+    <fragment
+        android:id="@+id/onboardingScreen4"
+        android:name="com.example.nightlibrary.OnboardingScreen4"
+        android:label="fragment_onboarding_screen4"
+        tools:layout="@layout/fragment_onboarding_screen4" >
+        <action
+            android:id="@+id/action_onboardingScreen4_to_createPinFragment"
+            app:destination="@id/createPinFragment" />
+    </fragment>
+    <fragment
+        android:id="@+id/manageContact"
+        android:name="com.example.nightlibrary.ManageContact"
+        android:label="ManageContact" />
+    <fragment
+        android:id="@+id/managePassword"
+        android:name="com.example.nightlibrary.ManagePassword"
+        android:label="ManagePassword" />
+    <fragment
+        android:id="@+id/libraryFragment"
+        android:name="com.example.nightlibrary.libraryFragment"
+        android:label="fragment_library"
+        tools:layout="@layout/fragment_library" >
+        <action
+            android:id="@+id/action_libraryFragment_to_settingsFragment"
+            app:destination="@id/settingsFragment" />
+        <action
+            android:id="@+id/action_libraryFragment_to_homeFragment"
+            app:destination="@id/homeFragment" />
+    </fragment>
+    <fragment
+        android:id="@+id/settingsFragment"
+        android:name="com.example.nightlibrary.settingsFragment"
+        android:label="fragment_settings"
+        tools:layout="@layout/fragment_settings" >
+        <action
+            android:id="@+id/action_settingsFragment_to_homeFragment"
+            app:destination="@id/homeFragment" />
+        <action
+            android:id="@+id/action_settingsFragment_to_libraryFragment"
+            app:destination="@id/libraryFragment" />
+    </fragment>
+    <fragment
+        android:id="@+id/import_media"
+        android:name="com.example.nightlibrary.ImportMediaFragment"
+        android:label="Import_media" >
+        <action
+            android:id="@+id/action_import_media_to_downloadFormLink"
+            app:destination="@id/downloadFormLink" />
+    </fragment>
+    <fragment
+        android:id="@+id/downloadFormLink"
+        android:name="com.example.nightlibrary.DownloadFormLink"
+        android:label="DownloadFormLink" />
+
+    <action
+        android:id="@+id/action_global_biometricFragment"
+        app:destination="@id/biometricFragment" />
+
+    <action
+        android:id="@+id/action_global_confirmPinFragment"
+        app:destination="@id/confirmPinFragment" />
+</navigation>

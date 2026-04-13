@@ -1,0 +1,254 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.coordinatorlayout.widget.CoordinatorLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/reading_coordinator_layout"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/bg_primary"
+    tools:context=".ReadingFragment">
+
+    <!-- Scrollable Content Area -->
+    <androidx.core.widget.NestedScrollView
+        android:id="@+id/scroll_view_reading"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:fillViewport="true"
+        android:scrollbars="none">
+
+        <LinearLayout
+            android:id="@+id/main_content_container"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:paddingBottom="80dp"> <!-- Padding to prevent content from hiding behind the bottom bar -->
+
+            <!-- Top Toolbar -->
+            <com.google.android.material.appbar.MaterialToolbar
+                android:id="@+id/toolbar_reading"
+                android:layout_width="match_parent"
+                android:layout_height="?attr/actionBarSize"
+                app:navigationIcon="@drawable/ic_arrow_left_with_bg"
+                app:title="Discreet Access"
+                app:titleTextAppearance="@style/ToolbarTitle"
+                app:titleTextColor="@color/text_primary"
+                app:titleCentered="false">
+
+            </com.google.android.material.appbar.MaterialToolbar>
+
+
+            <!-- Search Input Field -->
+            <com.google.android.material.textfield.TextInputLayout
+                android:id="@+id/search_input_layout"
+                style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="16dp"
+                android:layout_marginTop="8dp"
+                android:layout_marginEnd="16dp"
+                android:hint="@null"
+                android:clickable="true"
+                android:focusable="true"
+                app:boxBackgroundColor="@color/bg_secondary"
+                app:boxCornerRadiusBottomEnd="16dp"
+                app:boxCornerRadiusBottomStart="16dp"
+                app:boxCornerRadiusTopEnd="16dp"
+                app:boxCornerRadiusTopStart="16dp"
+                app:boxStrokeWidth="0dp"
+                app:boxStrokeWidthFocused="0dp"
+                app:startIconDrawable="@drawable/ic_search"
+                app:startIconTint="@color/text_secondary">
+
+                <com.google.android.material.textfield.TextInputEditText
+                    android:id="@+id/search_edit_text"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:focusable="false"
+                    android:focusableInTouchMode="false"
+                    android:clickable="false"
+                    android:longClickable="false"
+                    android:cursorVisible="false"
+                    android:inputType="none"
+                    android:hint="Search thought or keyword..."
+                    android:textColor="@color/text_primary"
+                    android:textColorHint="@color/text_secondary" />
+
+            </com.google.android.material.textfield.TextInputLayout>
+            <!-- 👇 ADD THIS RIGHT BELOW THE SEARCH BAR -->
+            <TextView
+                android:id="@+id/secret_status_text"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="20dp"
+                android:layout_marginTop="4dp"
+                android:text=""
+                android:textColor="@color/text_secondary"
+                android:textSize="12sp"
+                android:alpha="0"/>
+            <!-- Spacer -->
+            <View
+                android:id="@+id/spacer_top"
+                android:layout_width="match_parent"
+                android:layout_height="24dp" />
+
+            <!-- Reading Content -->
+            <LinearLayout
+                android:id="@+id/reading_text_container"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:paddingStart="24dp"
+                android:paddingEnd="24dp">
+
+                <TextView
+                    android:id="@+id/article_title"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="The Art of Evening Reflection"
+                    android:textColor="@color/text_primary"
+                    android:textSize="22sp"
+                    android:textStyle="bold" />
+
+                <TextView
+                    android:id="@+id/article_paragraph_1"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="16dp"
+                    android:lineSpacingExtra="6dp"
+                    android:text="As the day winds down and darkness settles, there's a unique tranquility that emerges. This quiet hour offers a precious opportunity for introspection and peaceful contemplation."
+                    android:textColor="@color/text_secondary"
+                    android:textSize="16sp" />
+
+                <TextView
+                    android:id="@+id/article_paragraph_2"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="16dp"
+                    android:lineSpacingExtra="6dp"
+                    android:text="The gentle stillness of night creates an ideal environment for deep focus and mindful reading. Away from the distractions of daylight, our minds can fully immerse in thoughts and ideas."
+                    android:textColor="@color/text_secondary"
+                    android:textSize="16sp" />
+
+                <TextView
+                    android:id="@+id/article_paragraph_3"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="16dp"
+                    android:lineSpacingExtra="6dp"
+                    android:text="This practice of evening reading not only soothes the mind but also prepares us for restful sleep, allowing thoughts to settle naturally as we transition toward rest."
+                    android:textColor="@color/text_secondary"
+                    android:textSize="16sp" />
+
+                <!-- "Article continues" Card -->
+                <com.google.android.material.card.MaterialCardView
+                    android:id="@+id/article_continues_card"
+                    android:layout_width="match_parent"
+                    android:layout_height="150dp"
+                    android:layout_marginTop="24dp"
+                    app:cardBackgroundColor="@color/bg_secondary"
+                    app:cardCornerRadius="18dp"
+                    app:cardElevation="0dp">
+
+                    <TextView
+                        android:id="@+id/article_continues_text"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_gravity="center"
+                        android:text="Article continues..."
+                        android:textColor="@color/text_muted"
+                        android:textSize="14sp" />
+                </com.google.android.material.card.MaterialCardView>
+            </LinearLayout>
+        </LinearLayout>
+    </androidx.core.widget.NestedScrollView>
+
+    <!-- Bottom Floating Action Buttons -->
+    <LinearLayout
+        android:id="@+id/bottom_actions_bar"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_gravity="bottom"
+        android:background="@color/bg_primary"
+        android:gravity="center_vertical"
+        android:orientation="horizontal"
+        android:padding="16dp">
+
+        <!-- Left-side buttons -->
+        <FrameLayout
+            android:id="@+id/contrast_button_container"
+            style="@style/CircularIconContainer">
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/button_contrast"
+                android:contentDescription="It's used for zoom in and out"
+                style="@style/Widget.Material3.Button.IconButton"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                app:icon="@drawable/ic_contrast"
+                app:iconGravity="textStart"
+                app:iconPadding="0dp"
+                app:iconSize="24dp"
+                app:iconTint="@color/text_secondary" />
+        </FrameLayout>
+
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/button_text_size"
+            android:contentDescription="text size"
+            style="@style/Widget.Material3.Button.IconButton"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:layout_marginStart="8dp"
+            app:icon="@drawable/ic_text_size"
+            app:iconGravity="textStart"
+            app:iconPadding="0dp"
+            app:iconSize="24dp"
+            app:iconTint="@color/text_secondary" />
+
+        <FrameLayout
+            android:id="@+id/add_button_container"
+            style="@style/CircularIconContainer"
+            android:layout_marginStart="8dp">
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/button_add"
+                android:contentDescription="add"
+                style="@style/Widget.Material3.Button.IconButton"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                app:icon="@drawable/ic_add_circle"
+                app:iconGravity="textStart"
+                app:iconPadding="0dp"
+                app:iconSize="24dp"
+                app:iconTint="@color/text_secondary" />
+        </FrameLayout>
+
+
+        <!-- Spacer to push the next button to the end -->
+        <View
+            android:id="@+id/bottom_bar_spacer"
+            android:layout_width="0dp"
+            android:layout_height="0dp"
+            android:layout_weight="1" />
+
+        <!-- Right-side button -->
+        <FrameLayout
+            android:id="@+id/bookmark_button_container"
+            style="@style/CircularIconContainer">
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/button_bookmark"
+                android:contentDescription="It's used for bookmark"
+                style="@style/Widget.Material3.Button.IconButton"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                app:icon="@drawable/ic_bookmark"
+                app:iconGravity="textStart"
+                app:iconPadding="0dp"
+                app:iconSize="24dp"
+                app:iconTint="@color/text_secondary" />
+        </FrameLayout>
+
+    </LinearLayout>
+
+</androidx.coordinatorlayout.widget.CoordinatorLayout>

@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="utf-8"?>
+<com.google.android.material.card.MaterialCardView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    style="@style/SettingsCard"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:layout_margin="16dp">
+
+    <LinearLayout
+        style="@style/FocusCardContent"
+        android:paddingTop="16dp"
+        android:paddingBottom="16dp">
+
+        <FrameLayout
+            android:id="@+id/summary_icon_container"
+            style="@style/FocusIconContainer">
+
+            <ImageView
+                android:id="@+id/summary_icon"
+                style="@style/FocusIcon"
+                tools:src="@drawable/lockicon" />
+        </FrameLayout>
+
+        <LinearLayout style="@style/FocusTextContainer">
+
+            <TextView
+                android:id="@+id/summary_title"
+                style="@style/FocusTitle"
+                tools:text="Manage Passwords" />
+        </LinearLayout>
+
+        <TextView
+            android:id="@+id/summary_item_count"
+            style="@style/FocusSubtitle"
+            android:layout_gravity="center_vertical"
+            tools:text="3 items" />
+    </LinearLayout>
+
+</com.google.android.material.card.MaterialCardView>

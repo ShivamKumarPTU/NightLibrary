@@ -1,0 +1,184 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/overlay_dark">
+
+    <!-- Brightness Overlay (Left) - Set to VISIBLE by default so it shows with controls -->
+    <LinearLayout
+        android:id="@+id/brightness_container"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="24dp"
+        android:gravity="center"
+        android:orientation="vertical"
+        android:padding="8dp"
+        android:visibility="visible"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent">
+
+        <ImageView
+            android:layout_width="20dp"
+            android:layout_height="20dp"
+            android:src="@drawable/ic_media"
+            app:tint="@color/white" />
+
+        <ProgressBar
+            android:id="@+id/brightness_progress"
+            style="@android:style/Widget.ProgressBar.Horizontal"
+            android:layout_width="4dp"
+            android:layout_height="100dp"
+            android:layout_marginTop="8dp"
+            android:progressDrawable="@drawable/bg_vertical_progress" />
+    </LinearLayout>
+
+    <!-- Volume Overlay (Right) - Set to VISIBLE by default -->
+    <LinearLayout
+        android:id="@+id/volume_container"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginEnd="24dp"
+        android:gravity="center"
+        android:orientation="vertical"
+        android:padding="8dp"
+        android:visibility="visible"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintTop_toTopOf="parent">
+
+        <ImageView
+            android:id="@+id/volume_icon_overlay"
+            android:layout_width="20dp"
+            android:layout_height="20dp"
+            android:src="@drawable/voulme_on"
+            app:tint="@color/white" />
+
+        <ProgressBar
+            android:id="@+id/volume_progress"
+            style="@android:style/Widget.ProgressBar.Horizontal"
+            android:layout_width="4dp"
+            android:layout_height="100dp"
+            android:layout_marginTop="8dp"
+            android:progressDrawable="@drawable/bg_vertical_progress" />
+    </LinearLayout>
+
+    <!-- Center Play/Pause -->
+    <ImageButton
+        android:id="@+id/exo_play_pause"
+        android:layout_width="64dp"
+        android:layout_height="64dp"
+        android:background="?attr/selectableItemBackgroundBorderless"
+        android:src="@drawable/sl_play_pause"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent"
+        app:tint="@color/white" />
+
+    <androidx.constraintlayout.widget.ConstraintLayout
+        android:id="@+id/constraintLayout"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:paddingBottom="24dp"
+        app:layout_constraintBottom_toBottomOf="parent">
+
+        <androidx.media3.ui.DefaultTimeBar
+            android:id="@+id/exo_progress"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginHorizontal="16dp"
+            app:bar_height="3dp"
+            app:played_color="#FF9500"
+            app:scrubber_color="#FF9500"
+            app:layout_constraintTop_toTopOf="parent" />
+
+        <TextView
+            android:id="@+id/exo_position"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="16dp"
+            android:textColor="#CCFFFFFF"
+            android:textSize="12sp"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toBottomOf="@id/exo_progress" />
+
+        <TextView
+            android:id="@+id/exo_duration"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginEnd="16dp"
+            android:textColor="#CCFFFFFF"
+            android:textSize="12sp"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintTop_toBottomOf="@id/exo_progress" />
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="56dp"
+            android:layout_marginTop="8dp"
+            android:gravity="center"
+            android:orientation="horizontal"
+            android:paddingHorizontal="16dp"
+            app:layout_constraintTop_toBottomOf="@id/exo_position">
+
+            <ImageButton
+                android:id="@+id/btn_mute_toggle"
+                android:layout_width="40dp"
+                android:layout_height="40dp"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:src="@drawable/sl_mute_unmute"
+                app:tint="@color/white" />
+
+            <View android:layout_width="0dp" android:layout_height="1dp" android:layout_weight="1" />
+
+            <!-- CHANGED ID to custom_prev -->
+            <ImageButton
+                android:id="@+id/custom_prev"
+                android:layout_width="40dp"
+                android:layout_height="40dp"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:src="@android:drawable/ic_media_previous"
+              />
+
+            <ImageButton
+                android:id="@+id/exo_rew"
+                android:layout_width="40dp"
+                android:layout_height="40dp"
+                android:layout_marginHorizontal="12dp"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:src="@drawable/backward10s__1_"
+                app:tint="@color/white" />
+
+            <ImageButton
+                android:id="@+id/exo_ffwd"
+                android:layout_width="40dp"
+                android:layout_height="40dp"
+                android:layout_marginHorizontal="12dp"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:src="@drawable/forward10s1"
+                app:tint="@color/white" />
+
+            <!-- CHANGED ID to custom_next -->
+            <ImageButton
+                android:id="@+id/custom_next"
+                android:layout_width="40dp"
+                android:layout_height="40dp"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:src="@android:drawable/ic_media_next"
+                />
+
+            <View android:layout_width="0dp" android:layout_height="1dp" android:layout_weight="1" />
+
+            <ImageButton
+                android:id="@+id/btn_aspect_ratio"
+                android:layout_width="40dp"
+                android:layout_height="40dp"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:src="@drawable/fullscreen"
+                app:tint="@color/white" />
+        </LinearLayout>
+    </androidx.constraintlayout.widget.ConstraintLayout>
+</androidx.constraintlayout.widget.ConstraintLayout>

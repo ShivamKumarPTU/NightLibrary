@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+    <GridLayout
+        xmlns:android="http://schemas.android.com/apk/res/android"
+        android:id="@+id/keypadGrid"
+        android:layout_width="280dp"
+        android:layout_height="wrap_content"
+        android:columnCount="3"
+        android:rowCount="4"
+        android:useDefaultMargins="true">
+
+        <include layout="@layout/item_keypad_button" android:id="@+id/btn1"/>
+        <include layout="@layout/item_keypad_button" android:id="@+id/btn2"/>
+        <include layout="@layout/item_keypad_button" android:id="@+id/btn3"/>
+
+        <include layout="@layout/item_keypad_button" android:id="@+id/btn4"/>
+        <include layout="@layout/item_keypad_button" android:id="@+id/btn5"/>
+        <include layout="@layout/item_keypad_button" android:id="@+id/btn6"/>
+
+        <include layout="@layout/item_keypad_button" android:id="@+id/btn7"/>
+        <include layout="@layout/item_keypad_button" android:id="@+id/btn8"/>
+        <include layout="@layout/item_keypad_button" android:id="@+id/btn9"/>
+
+        <Space android:layout_width="0dp" android:layout_height="0dp"/>
+        <include layout="@layout/item_keypad_button" android:id="@+id/btn0"/>
+        <include layout="@layout/item_keypad_button" android:id="@+id/btnDelete"/>
+
+    </GridLayout>

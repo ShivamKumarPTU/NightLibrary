@@ -1,0 +1,93 @@
+<?xml version="1.0" encoding="utf-8"?>
+<com.google.android.material.card.MaterialCardView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    style="@style/SettingsCard">
+
+    <androidx.constraintlayout.widget.ConstraintLayout style="@style/SettingsRowContainer">
+
+        <!-- Circular container for the initial -->
+        <FrameLayout
+            android:id="@+id/contact_initial_container"
+            style="@style/FocusIconContainer"
+            android:layout_marginStart="16dp"
+            android:layout_marginTop="8dp"
+            android:layout_marginEnd="16dp"
+            android:layout_marginBottom="8dp"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintEnd_toStartOf="@+id/contact_text_container"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toTopOf="parent">
+
+            <TextView
+                android:id="@+id/contact_initial_text"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_gravity="center"
+                android:textColor="@color/text_primary"
+                android:textSize="20sp"
+                android:textStyle="bold"
+                tools:text="J" />
+        </FrameLayout>
+
+        <!-- Container for all text content -->
+        <LinearLayout
+            android:id="@+id/contact_text_container"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="16dp"
+            android:orientation="vertical"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintEnd_toStartOf="@+id/contrast_button_container"
+            app:layout_constraintStart_toEndOf="@+id/contact_initial_container"
+            app:layout_constraintTop_toTopOf="parent">
+
+            <TextView
+                android:id="@+id/contact_name"
+                style="@style/FocusTitle"
+                android:textColorHighlight="@color/white"
+                tools:text="John Smith" />
+
+            <TextView
+                android:id="@+id/contact_phone_number"
+                style="@style/FocusSubtitle"
+                android:layout_marginTop="4dp"
+                android:textColorHighlight="@color/white"
+                android:drawableStart="@drawable/ic_phone1"
+                android:drawablePadding="8dp"
+                android:gravity="center_vertical"
+                app:drawableTint="@color/text_secondary"
+                tools:text="+1 (555) 123-4567" />
+
+            <TextView
+                android:id="@+id/contact_description"
+                style="@style/FocusSubtitle"
+                android:layout_marginTop="2dp"
+                android:textColorHighlight="@color/white"
+                android:textColor="@color/text_muted"
+                tools:text="Work contact" />
+
+        </LinearLayout>
+
+        <FrameLayout
+            android:id="@+id/contrast_button_container"
+            style="@style/FocusIconContainer"
+            android:layout_width="44dp"
+            android:layout_height="44dp"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintTop_toTopOf="parent">
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/contact_more_button"
+                style="@style/Widget.Material3.Button.IconButton"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+
+                android:contentDescription="More options"
+                app:icon="@drawable/ic_threedot"
+                app:iconSize="20dp"
+                app:iconTint="@color/text_secondary" />
+        </FrameLayout>
+    </androidx.constraintlayout.widget.ConstraintLayout>
+
+</com.google.android.material.card.MaterialCardView>

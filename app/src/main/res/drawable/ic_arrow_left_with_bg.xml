@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Your circular background -->
+    <item>
+        <shape android:shape="oval">
+            <size
+                android:width="40dp"
+                android:height="40dp" />
+            <solid android:color="@color/progress_background" />
+        </shape>
+    </item>
+
+    <!-- Your arrow icon -->
+    <item
+        android:drawable="@drawable/ic_arrow_left"
+        android:width="24dp"
+        android:height="24dp"
+        android:gravity="center" />
+</layer-list>

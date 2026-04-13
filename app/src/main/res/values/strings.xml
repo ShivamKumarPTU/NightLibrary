@@ -1,0 +1,115 @@
+<resources>
+    <string name="app_name">NightVault</string>
+
+    <!-- ========================= -->
+    <!-- Lock Screen -->
+    <!-- ========================= -->
+    <string name="secure_access">Secure Access</string>
+    <string name="demo_pin">Enter your vault PIN</string>
+    <string name="delete">⌫</string>
+
+    <!-- ========================= -->
+    <!-- Home Screen -->
+    <!-- ========================= -->
+    <string name="home_header">NightVault</string>
+    <string name="home_subtitle">Secure private storage for your personal content</string>
+
+    <string name="deep_sleep">Secure Photos</string>
+    <string name="deep_sleep_desc">Encrypted private image vault</string>
+
+    <string name="focus_mode">Private Videos</string>
+    <string name="focus_mode_desc">Lock and play protected videos</string>
+
+    <string name="night_reading">Discreet Access</string>
+    <string name="night_reading_desc">Optional alternate vault entry</string>
+
+    <string name="ambient_sounds">Private Audio</string>
+    <string name="ambient_sounds_desc">Store music and voice files securely</string>
+
+    <string name="guided_thoughts">Passwords and Contacts</string>
+    <string name="guided_thoughts_desc">Protect your sensitive personal records</string>
+
+    <!-- Bottom Navigation -->
+    <string name="nav_home">Home</string>
+    <string name="nav_library">Library</string>
+    <string name="nav_settings">Settings</string>
+
+    <!-- ========================= -->
+    <!-- Discreet Access -->
+    <!-- ========================= -->
+    <string name="search_placeholder">Tap to continue to your protected vault...</string>
+    <string name="article_title">Secure access keeps your content private</string>
+
+    <string name="article_paragraph_2">
+        NightVault helps you protect personal photos, videos, audio, documents, passwords, and contacts inside an encrypted private space.
+    </string>
+    <string name="article_paragraph_3">
+        Use a PIN or biometric unlock, organize your content securely, and access it through a clean interface designed for privacy-first use.
+    </string>
+    <string name="article_placeholder">Article continues...</string>
+
+    <!-- ========================= -->
+    <!-- Vault / Media Library -->
+    <!-- ========================= -->
+    <string name="media_library">Media Library</string>
+    <string name="private_downloads">Private media vault</string>
+    <string name="tab_in_progress">In Progress</string>
+    <string name="tab_completed">Completed</string>
+    <string name="no_active_downloads">No active downloads</string>
+
+    <!-- ========================= -->
+    <!-- Add Content -->
+    <!-- ========================= -->
+    <string name="add_content">Add Content</string>
+    <string name="paste_link">Paste Link</string>
+    <string name="incognito_mode">Private Import Mode</string>
+    <string name="incognito_subtitle">Import directly into your secure vault</string>
+    <string name="quality">Quality</string>
+    <string name="fetch_media">Fetch Media</string>
+    <string name="select_quality">Select Quality</string>
+
+    <!-- ========================= -->
+    <!-- Download Screen -->
+    <!-- ========================= -->
+    <string name="downloading">Downloading</string>
+    <string name="quality_label">Quality:</string>
+    <string name="speed">Speed</string>
+    <string name="time_remaining">Time Remaining</string>
+    <string name="downloading_silently">Import running securely in background</string>
+    <string name="cancel_download">Cancel Download</string>
+
+    <!-- ========================= -->
+    <!-- Settings -->
+    <!-- ========================= -->
+    <string name="privacy">Privacy</string>
+    <string name="enable_discreet">Enable Discreet Access</string>
+    <string name="discreet_desc">Use an alternate vault entry screen for privacy</string>
+
+    <string name="hide_app">Launcher Visibility</string>
+    <string name="hide_app_desc">Control how the app appears on your device</string>
+
+    <string name="enable_silent">Minimal Notifications</string>
+    <string name="silent_desc">Reduce notification detail during background tasks</string>
+
+    <string name="incognito_desc">Keep imported content inside the vault workflow</string>
+
+    <string name="security">Security</string>
+    <string name="change_pin">Change PIN</string>
+    <string name="change_pin_desc">Update your access code</string>
+
+    <string name="enable_biometric">Enable Biometric</string>
+    <string name="biometric_desc">Fingerprint authentication</string>
+
+    <string name="app_version">NightVault v1.0.0</string>
+    <!-- TODO: Remove or change this placeholder text -->
+    <string name="hello_blank_fragment">Hello blank fragment</string>
+
+    <!-- ========================= -->
+    <!-- Import Progress Dialog -->
+    <!-- ========================= -->
+    <string name="importing_media">Importing Media</string>
+    <string name="generating_thumbnail">Generating thumbnail...</string>
+    <string name="encrypting_file">Encrypting file...</string>
+    <string name="saving_to_vault">Saving to vault...</string>
+
+</resources>

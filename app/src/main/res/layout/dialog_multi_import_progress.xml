@@ -1,0 +1,142 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent">
+
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:background="@color/dimmed_overlay" />
+
+    <LinearLayout
+        android:layout_width="320dp"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center"
+        android:background="@drawable/rounded_dialog_background"
+        android:elevation="8dp"
+        android:orientation="vertical"
+        android:padding="24dp">
+
+        <!-- Title -->
+        <TextView
+            android:id="@+id/tvImportTitle"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Importing Media"
+            android:textColor="@color/white"
+            android:textSize="18sp"
+            android:textStyle="bold"
+            android:layout_marginBottom="4dp" />
+
+        <!-- File counter: "File 2 of 5" -->
+        <TextView
+            android:id="@+id/tvFileCounter"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Preparing…"
+            android:textColor="#B0BEC5"
+            android:textSize="13sp"
+            android:layout_marginBottom="16dp" />
+
+        <!-- Current file name -->
+        <TextView
+            android:id="@+id/tvCurrentFileName"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text=""
+            android:textColor="@color/white"
+            android:textSize="14sp"
+            android:ellipsize="middle"
+            android:singleLine="true"
+            android:layout_marginBottom="8dp" />
+
+        <!-- Current file status -->
+        <TextView
+            android:id="@+id/tvCurrentStatus"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Encrypting…"
+            android:textColor="#B0BEC5"
+            android:textSize="12sp"
+            android:layout_marginBottom="8dp" />
+
+        <!-- Current file progress bar -->
+        <ProgressBar
+            android:id="@+id/progressCurrentFile"
+            style="@android:style/Widget.ProgressBar.Horizontal"
+            android:layout_width="match_parent"
+            android:layout_height="6dp"
+            android:max="100"
+            android:progress="0"
+            android:progressDrawable="@drawable/progress_bar_background"
+            android:layout_marginBottom="4dp" />
+
+        <!-- Current file percentage -->
+        <TextView
+            android:id="@+id/tvCurrentPercent"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="0%"
+            android:textColor="#78909C"
+            android:textSize="11sp"
+            android:gravity="end"
+            android:layout_marginBottom="16dp" />
+
+        <!-- Divider (hidden for single file) -->
+        <View
+            android:id="@+id/dividerOverall"
+            android:layout_width="match_parent"
+            android:layout_height="1dp"
+            android:background="#1AFFFFFF"
+            android:layout_marginBottom="12dp" />
+
+        <!-- Overall label (hidden for single file) -->
+        <TextView
+            android:id="@+id/tvOverallLabel"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Overall Progress"
+            android:textColor="#78909C"
+            android:textSize="12sp"
+            android:layout_marginBottom="6dp" />
+
+        <!-- Overall progress bar -->
+        <ProgressBar
+            android:id="@+id/progressOverall"
+            style="@android:style/Widget.ProgressBar.Horizontal"
+            android:layout_width="match_parent"
+            android:layout_height="8dp"
+            android:max="100"
+            android:progress="0"
+            android:progressDrawable="@drawable/progress_bar_background"
+            android:layout_marginBottom="4dp" />
+
+        <!-- Overall percentage -->
+        <TextView
+            android:id="@+id/tvOverallPercent"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="0%"
+            android:textColor="#78909C"
+            android:textSize="11sp"
+            android:gravity="end"
+            android:layout_marginBottom="16dp" />
+
+        <!-- Cancel button -->
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnCancelImport"
+            style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+            android:layout_width="match_parent"
+            android:layout_height="44dp"
+            android:text="Cancel Import"
+            android:textColor="#FF5252"
+            android:textSize="14sp"
+            android:textAllCaps="false"
+            app:strokeColor="#FF5252"
+            app:strokeWidth="1dp"
+            app:cornerRadius="8dp"
+            app:rippleColor="#33FF5252" />
+
+    </LinearLayout>
+</FrameLayout>

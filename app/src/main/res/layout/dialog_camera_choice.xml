@@ -1,0 +1,87 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:background="@drawable/bg_bottom_sheet_dark"
+    android:orientation="vertical"
+    android:padding="24dp">
+
+    <!-- Header Title matching Contact sheet -->
+    <TextView
+        android:id="@+id/bottom_sheet_title"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Capture From Camera"
+        android:textColor="@color/text_primary"
+        android:textSize="20sp"
+        android:textStyle="bold" />
+
+    <!-- Take Photo Button (Matching 'Import from Phone Contacts' style) -->
+    <com.google.android.material.button.MaterialButton
+        android:id="@+id/cardTakePhoto"
+        style="@style/Widget.Material3.Button.TonalButton"
+        android:layout_width="match_parent"
+        android:layout_height="65dp"
+        android:layout_marginTop="24dp"
+        android:text="Take New Photo"
+        android:textColor="@color/text_primary"
+        android:gravity="center_vertical|start"
+        android:paddingStart="20dp"
+        app:backgroundTint="@color/bg_card_alt"
+        app:icon="@drawable/ic_camera"
+        app:iconGravity="textStart"
+        app:iconPadding="16dp"
+        app:iconSize="24dp"
+        app:iconTint="@color/text_primary"
+        app:shapeAppearanceOverlay="@style/FabShape" />
+
+    <!-- Record Video Button -->
+    <com.google.android.material.button.MaterialButton
+        android:id="@+id/cardRecordVideo"
+        style="@style/Widget.Material3.Button.TonalButton"
+        android:layout_width="match_parent"
+        android:layout_height="65dp"
+        android:layout_marginTop="12dp"
+        android:text="Record Video Clip"
+        android:textColor="@color/text_primary"
+        android:gravity="center_vertical|start"
+        android:paddingStart="20dp"
+        app:backgroundTint="@color/bg_card_alt"
+        app:icon="@drawable/ic_media"
+        app:iconGravity="textStart"
+        app:iconPadding="16dp"
+        app:iconSize="24dp"
+        app:iconTint="@color/text_primary"
+        app:shapeAppearanceOverlay="@style/FabShape" />
+
+    <!-- Video Limit Info (Matching Contact hint style) -->
+    <TextView
+        android:id="@+id/tvVideoLimit"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
+        android:layout_gravity="end"
+        android:text="Max 10 min duration"
+        android:textColor="@color/text_tertiary"
+        android:textSize="12sp" />
+
+    <!-- Divider (Matching Contact sheet) -->
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="1dp"
+        android:layout_marginTop="20dp"
+        android:background="@color/border_primary" />
+
+    <!-- Cancel Button (Matching Contact sheet cancel button) -->
+    <com.google.android.material.button.MaterialButton
+        android:id="@+id/button_cancel_camera"
+        style="@style/Widget.Material3.Button.OutlinedButton"
+        android:layout_width="match_parent"
+        android:layout_height="60dp"
+        android:layout_marginTop="20dp"
+        android:text="Cancel"
+        android:textColor="@color/text_secondary"
+        app:strokeColor="@color/border_primary" />
+
+</LinearLayout>

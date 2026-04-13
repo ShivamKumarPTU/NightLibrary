@@ -1,0 +1,151 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/bg_primary"
+    tools:context=".OnboardingScreen2">
+
+    <!-- This container will hold all the centered content -->
+
+    <!-- 5. Bottom buttons -->
+
+    <LinearLayout
+        android:id="@+id/content_container_onboarding2"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="208dp"
+        android:gravity="center"
+        android:orientation="vertical"
+        android:paddingStart="32dp"
+        android:paddingEnd="32dp"
+        app:layout_constraintBottom_toTopOf="@+id/continueButton"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintHorizontal_bias="1.0"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintVertical_chainStyle="packed">
+
+        <!-- 1. Top Eye Icon -->
+        <FrameLayout
+            android:id="@+id/eyeIconLayout"
+            android:layout_width="80dp"
+            android:layout_height="80dp"
+            android:background="@drawable/button_background"> <!-- Re-using button background -->
+
+            <ImageView
+                android:id="@+id/eyeIcon"
+                android:layout_width="40dp"
+                android:layout_height="40dp"
+                android:layout_gravity="center"
+                android:src="@drawable/ic_eye"
+                app:tint="@color/text_secondary" />
+        </FrameLayout>
+
+        <!-- 2. Header Text -->
+        <TextView
+            android:id="@+id/tv_header_onboarding2"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="24dp"
+            android:text="Discreet Access"
+            android:textColor="@color/text_primary"
+            android:textSize="24sp"
+            android:textStyle="bold" />
+
+        <!-- 3. Description Text -->
+
+        <!-- 4. Feature Cards -->
+        <TextView
+            android:id="@+id/tv_description_onboarding2"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            android:gravity="center"
+            android:lineSpacingExtra="4dp"
+            android:layout_marginStart="8dp"
+            android:layout_marginEnd="8dp"
+            android:text="NightVault includes an optional alternate access screen for users who want a more discreet way to open their private vault."
+            android:textColor="@color/text_secondary"
+            android:textSize="14sp" />
+
+        <com.google.android.material.card.MaterialCardView
+            style="@style/SettingsCard"
+            android:layout_width="match_parent"
+            android:layout_marginTop="32dp">
+
+            <LinearLayout style="@style/FocusCardContent">
+
+                <FrameLayout style="@style/FocusIconContainer">
+
+                    <ImageView
+                        style="@style/FocusIcon"
+                        android:src="@drawable/moonicon" />
+                </FrameLayout>
+
+                <LinearLayout style="@style/FocusTextContainer">
+
+                    <TextView
+                        style="@style/FocusTitle"
+                        android:text="Primary Vault Home" />
+
+                    <TextView
+                        style="@style/FocusSubtitle"
+                        android:text="Standard access" />
+                </LinearLayout>
+            </LinearLayout>
+        </com.google.android.material.card.MaterialCardView>
+
+        <com.google.android.material.card.MaterialCardView
+            style="@style/SettingsCard"
+            android:layout_width="match_parent">
+
+            <LinearLayout style="@style/FocusCardContent">
+
+                <FrameLayout style="@style/FocusIconContainer">
+
+                    <ImageView
+                        style="@style/FocusIcon"
+                        android:src="@drawable/ic_readingbook" />
+                </FrameLayout>
+
+                <LinearLayout style="@style/FocusTextContainer">
+
+                    <TextView
+                        style="@style/FocusTitle"
+                        android:text="Discreet Access" />
+
+                    <TextView
+                        style="@style/FocusSubtitle"
+                        android:drawablePadding="4dp"
+                        android:text="Optional alternate entry" />
+                </LinearLayout>
+            </LinearLayout>
+        </com.google.android.material.card.MaterialCardView>
+
+    </LinearLayout>
+
+    <com.google.android.material.button.MaterialButton
+        android:id="@+id/continueButton2"
+        android:layout_width="0dp"
+        android:layout_height="72dp"
+        android:layout_marginStart="32dp"
+        android:layout_marginEnd="32dp"
+        android:layout_marginBottom="64dp"
+        android:text="Continue"
+        android:textColor="@color/black"
+        android:textSize="16sp"
+        android:textStyle="bold"
+        app:backgroundTint="@color/button_active_bg"
+        app:cornerRadius="16dp"
+        app:icon="@drawable/rightarrowicon"
+        app:iconGravity="textEnd"
+        app:iconPadding="8dp"
+        app:iconTint="@color/black"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintHorizontal_bias="0.0"
+        app:layout_constraintStart_toStartOf="parent" />
+
+</androidx.constraintlayout.widget.ConstraintLayout>

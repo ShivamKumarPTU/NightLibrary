@@ -1,0 +1,84 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent">
+
+    <!-- Blurred/Dimmed Background -->
+    <View
+        android:id="@+id/dimmed_background"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:background="@color/dimmed_overlay" />
+
+    <!-- Progress Dialog Card -->
+    <LinearLayout
+        android:layout_width="300dp"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center"
+        android:background="@drawable/rounded_dialog_background"
+        android:elevation="8dp"
+        android:orientation="vertical"
+        android:padding="24dp">
+
+        <!-- Title -->
+        <TextView
+            android:id="@+id/progress_title"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/importing_media"
+            android:textColor="@color/white"
+            android:textSize="18sp"
+            android:textStyle="bold"
+            android:layout_marginBottom="16dp" />
+
+        <!-- Status Text -->
+        <TextView
+            android:id="@+id/progress_status"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/generating_thumbnail"
+            android:textColor="@color/light_gray"
+            android:textSize="14sp"
+            android:layout_marginBottom="16dp" />
+
+        <!-- Progress Bar -->
+        <ProgressBar
+            android:id="@+id/progress_bar"
+            style="@android:style/Widget.ProgressBar.Horizontal"
+            android:layout_width="match_parent"
+            android:layout_height="8dp"
+            android:progress="0"
+            android:max="100"
+            android:indeterminate="false"
+            android:progressDrawable="@drawable/progress_bar_background"
+            android:layout_marginBottom="8dp" />
+
+        <!-- Percentage Text -->
+        <TextView
+            android:id="@+id/progress_percentage"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="0%"
+            android:textColor="@color/light_gray"
+            android:textSize="12sp"
+            android:gravity="end"
+            android:layout_marginBottom="16dp" />
+
+        <!-- Cancel Button -->
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btn_cancel_import"
+            style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+            android:layout_width="match_parent"
+            android:layout_height="48dp"
+            android:text="Cancel Import"
+            android:textColor="#FF5252"
+            android:textSize="14sp"
+            android:textAllCaps="false"
+            app:strokeColor="#FF5252"
+            app:strokeWidth="1dp"
+            app:cornerRadius="8dp"
+            app:rippleColor="#33FF5252"
+            xmlns:app="http://schemas.android.com/apk/res-auto" />
+
+    </LinearLayout>
+</FrameLayout>
