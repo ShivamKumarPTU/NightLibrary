@@ -7,7 +7,7 @@
     android:background="@color/bg_primary"
     android:fillViewport="true"
     android:scrollbars="none"
-    tools:context=".settingsFragment">
+    tools:context=".SettingsFragment">
 
     <LinearLayout
         android:layout_width="match_parent"
@@ -51,29 +51,29 @@
 
                     <ImageView
                         style="@style/SettingsIcon"
-                        app:tint="@color/text_secondary"
                         android:src="@drawable/ic_quicklauncher"
+                        app:tint="@color/text_secondary"
                         tools:ignore="ContentDescription" />
                 </FrameLayout>
 
                 <LinearLayout
                     style="@style/SettingsTextContainer"
                     app:layout_constraintBottom_toBottomOf="parent"
-                    app:layout_constraintEnd_toStartOf="@id/switch_quick_launcher"
+                    app:layout_constraintEnd_toStartOf="@id/switch_quickLauncher"
                     app:layout_constraintStart_toEndOf="@id/container_quick_launcher"
                     app:layout_constraintTop_toTopOf="parent">
 
                     <TextView
                         style="@style/SettingsTitle"
-                        android:text="Enable Floating Quick Launcher" />
+                        android:text="Quick Launcher" />
 
                     <TextView
                         style="@style/SettingsSubtitle"
-                        android:text="Optional on-screen bubble for faster vault access" />
+                        android:text="Access vault from any screen" />
                 </LinearLayout>
 
                 <com.google.android.material.switchmaterial.SwitchMaterial
-                    android:id="@+id/switch_quick_launcher"
+                    android:id="@+id/switch_quickLauncher"
                     style="@style/SettingsSwitch"
                     app:layout_constraintBottom_toBottomOf="parent"
                     app:layout_constraintEnd_toEndOf="parent"
@@ -81,7 +81,89 @@
             </androidx.constraintlayout.widget.ConstraintLayout>
         </com.google.android.material.card.MaterialCardView>
 
+        <!-- ========================= -->
+        <!-- Privacy Section -->
+        <!-- ========================= -->
+        <TextView
+            style="@style/SettingsSectionHeader"
+            android:text="Privacy" />
 
+        <com.google.android.material.card.MaterialCardView
+            android:id="@+id/card_private_imports"
+            android:layout_marginEnd="16dp"
+            android:layout_marginStart="16dp"
+            style="@style/SettingsCard"
+            android:clickable="true"
+            android:focusable="true">
+
+            <androidx.constraintlayout.widget.ConstraintLayout style="@style/SettingsRowContainer">
+
+                <FrameLayout
+                    android:id="@+id/container_private"
+                    style="@style/SettingsIconContainer"
+                    app:layout_constraintBottom_toBottomOf="parent"
+                    app:layout_constraintStart_toStartOf="parent"
+                    app:layout_constraintTop_toTopOf="parent">
+
+                    <ImageView
+                        style="@style/SettingsIcon"
+                        app:tint="@color/text_secondary"
+                        android:src="@drawable/ic_hide"
+                        tools:ignore="ContentDescription" />
+                </FrameLayout>
+
+                <LinearLayout
+                    style="@style/SettingsTextContainer"
+                    app:layout_constraintBottom_toBottomOf="parent"
+                    app:layout_constraintEnd_toStartOf="@id/container_private_badge"
+                    app:layout_constraintStart_toEndOf="@id/container_private"
+                    app:layout_constraintTop_toTopOf="parent">
+
+                    <TextView
+                        style="@style/SettingsTitle"
+                        android:text="Private Imports" />
+
+                    <TextView
+                        android:id="@+id/tv_private_count"
+                        style="@style/SettingsSubtitle"
+                        android:text="View items from Private Import Mode" />
+                </LinearLayout>
+
+                <LinearLayout
+                    android:id="@+id/container_private_badge"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical"
+                    app:layout_constraintBottom_toBottomOf="parent"
+                    app:layout_constraintEnd_toEndOf="parent"
+                    app:layout_constraintTop_toTopOf="parent">
+
+                    <TextView
+                        android:id="@+id/tv_badge_new"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:background="@drawable/bg_badge_new"
+                        android:paddingStart="8dp"
+                        android:paddingEnd="8dp"
+                        android:paddingTop="2dp"
+                        android:paddingBottom="2dp"
+                        android:text="NEW"
+                        android:textColor="@color/white"
+                        android:textSize="10sp"
+                        android:textStyle="bold"
+                        android:visibility="gone"
+                        tools:visibility="visible" />
+
+                    <ImageView
+                        android:layout_width="20dp"
+                        android:layout_height="20dp"
+                        android:layout_marginStart="8dp"
+                        android:src="@drawable/ic_arrow_right"
+                        app:tint="@color/text_muted" />
+                </LinearLayout>
+            </androidx.constraintlayout.widget.ConstraintLayout>
+        </com.google.android.material.card.MaterialCardView>
 
         <!-- ========================= -->
         <!-- Security Section -->

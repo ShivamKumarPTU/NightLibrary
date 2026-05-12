@@ -9,6 +9,7 @@ import com.example.nightlibrary.viewmodel.VaultViewModel
 import com.google.android.material.bottomsheet.BottomSheetDialog
 import com.google.android.material.bottomsheet.BottomSheetDialogFragment
 
+@Suppress("DEPRECATION")
 class AddContactBottomSheet : BottomSheetDialogFragment() {
 
     private var _binding: BottomSheetAddContactBinding? = null

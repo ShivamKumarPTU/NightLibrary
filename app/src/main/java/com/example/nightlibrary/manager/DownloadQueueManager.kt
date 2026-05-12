@@ -42,7 +42,7 @@ class DownloadQueueManager(private val context: Context) {
     private val scope = CoroutineScope(Dispatchers.IO)
 
     // ═══════════════════════════════════════════════════════════════
-    // ✅ MODIFIED: Added duration + fileType parameters
+    // ENQUEUE
     // ═══════════════════════════════════════════════════════════════
 
     suspend fun enqueueDownload(
@@ -57,11 +57,11 @@ class DownloadQueueManager(private val context: Context) {
         useYtDlp: Boolean = false,
         isHls: Boolean = false,
         estimatedSize: Long = -1L,
-        duration: Long = 0L,          // ✅ NEW — Problem 6
-        fileType: String? = null       // ✅ NEW — Feature A (overrides mimeType detection)
+        duration: Long = 0L,
+        fileType: String? = null,
+        streamUrl: String? = null              // ← ADD THIS PARAMETER
     ): Long {
 
-        // Duplicate check
         val pageUrl = originalUrl ?: downloadUrl
         val existingMediaId = checkDuplicateDownload(pageUrl, downloadUrl)
         if (existingMediaId != null) {
@@ -69,7 +69,6 @@ class DownloadQueueManager(private val context: Context) {
             return existingMediaId
         }
 
-        // Storage checks
         val freeSpace = getAvailableDiskSpace()
         if (freeSpace < MIN_FREE_SPACE) throw InsufficientStorageException("Only ${freeSpace / (1024 * 1024)} MB free.")
         if (estimatedSize > MAX_DOWNLOAD_SIZE) throw FileTooLargeException("File exceeds limit.")
@@ -80,7 +79,6 @@ class DownloadQueueManager(private val context: Context) {
         val db = VaultDatabase.getDatabase(context)
         val dao = db.mediaDao()
 
-        // ✅ Feature A: Use explicit fileType if provided, else detect from mimeType
         val resolvedFileType = fileType ?: when {
             mimeType.startsWith("image") -> "image"
             mimeType.startsWith("video") -> "video"
@@ -101,7 +99,7 @@ class DownloadQueueManager(private val context: Context) {
                 chunkSize = 0,
                 fileSize = estimatedSize.coerceAtLeast(0),
                 mimeType = mimeType,
-                fileType = resolvedFileType,            // ✅ Feature A
+                fileType = resolvedFileType,
                 isCompleted = false,
                 progress = 0,
                 checksum = "",
@@ -113,28 +111,30 @@ class DownloadQueueManager(private val context: Context) {
                 downloadedBytes = 0L,
                 useYtDlp = useYtDlp,
                 isHls = isHls,
+                streamUrl = streamUrl,
                 resumeBytes = 0L,
                 isInTrash = false,
                 currentSpeed = 0.0,
-                duration = duration                     // ✅ Problem 6
+                duration = duration
             )
         )
 
         val data = workDataOf(
             "url" to downloadUrl,
             "originalUrl" to originalUrl,
+            "streamUrl" to (streamUrl ?: ""),      // ← ADD THIS LINE
             "formatId" to formatId,
             "fileName" to fileName,
             "mediaId" to mediaId,
             "mimeType" to mimeType,
-            "fileType" to resolvedFileType,              // ✅ NEW: passed to worker
+            "fileType" to resolvedFileType,
             "incognito" to incognito,
             "silent" to silent,
             "headers" to headersJson,
             "useYtDlp" to useYtDlp,
             "isHls" to isHls,
             "resumeFromBytes" to 0L,
-            "duration" to duration                       // ✅ NEW: passed to worker
+            "duration" to duration
         )
 
         val request = OneTimeWorkRequestBuilder<MediaDownloadWorker>()
@@ -145,18 +145,27 @@ class DownloadQueueManager(private val context: Context) {
             .addTag(urlTag(downloadUrl))
             .setBackoffCriteria(BackoffPolicy.EXPONENTIAL, 15, TimeUnit.SECONDS)
             .setExpedited(OutOfQuotaPolicy.RUN_AS_NON_EXPEDITED_WORK_REQUEST)
-            .setConstraints(Constraints.Builder()
-                .setRequiredNetworkType(NetworkType.CONNECTED)
-                .setRequiresStorageNotLow(true)
-                .build())
+            .setConstraints(
+                Constraints.Builder()
+                    .setRequiredNetworkType(NetworkType.CONNECTED)
+                    .setRequiresStorageNotLow(true)
+                    .build()
+            )
             .build()
 
         workManager.enqueueUniqueWork(workName(mediaId), ExistingWorkPolicy.KEEP, request)
+        
+        // 🔥 Phase 3: Immediate High-Priority Service Start
+        try {
+            com.example.nightlibrary.worker.MediaDownloadService.start(context, mediaId)
+        } catch (e: Exception) {
+            Log.w(TAG, "Failed to start priority service: ${e.message}")
+        }
+
         Log.d(TAG, "▶ Enqueued: id=$mediaId name=$fileName type=$resolvedFileType duration=${duration}s incognito=$incognito silent=$silent")
         return mediaId
     }
 
-    // Duplicate check — unchanged
     private suspend fun checkDuplicateDownload(pageUrl: String, downloadUrl: String): Long? {
         try {
             val tag = urlTag(pageUrl)
@@ -178,46 +187,125 @@ class DownloadQueueManager(private val context: Context) {
     }
 
     // ═══════════════════════════════════════════════════════════════
-    // RESUME — Now passes duration + fileType
+    // ✅ FIXED: PAUSE — Handles both direct HTTP and HLS/yt-dlp
+    //
+    // Direct HTTP: partial file exists in vault_downloads/ → save its size
+    // HLS/yt-dlp: no partial file → use downloadedBytes from DB
+    //             (worker's saveResumeState already wrote to DB)
+    // ═══════════════════════════════════════════════════════════════
+
+    fun pauseDownload(media: MediaEntity) {
+        workManager.cancelUniqueWork(workName(media.id))
+        scope.launch {
+            try {
+                val dao = VaultDatabase.getDatabase(context).mediaDao()
+
+                // First: mark as paused + clear speed
+                dao.setPaused(media.id, true)
+                dao.clearSpeed(media.id)
+
+                // Second: try to find partial file (direct HTTP downloads)
+                val resumeDir = File(context.filesDir, "vault_downloads")
+                val partialFile = resumeDir.listFiles()
+                    ?.filter { it.name.startsWith("dl_${media.id}_") }
+                    ?.maxByOrNull { it.length() }
+
+                if (partialFile != null && partialFile.exists() && partialFile.length() > 0) {
+                    // ✅ Direct HTTP: physical partial file exists
+                    val bytes = partialFile.length()
+                    dao.updateProgress(media.id, media.progress, bytes)
+                    Log.d(TAG, "✅ Pause saved (direct): id=${media.id} bytes=$bytes")
+                } else {
+                    // ✅ HLS/yt-dlp: no partial file — use DB values
+                    // The worker's saveResumeState() (via NonCancellable) will update
+                    // the DB with actual downloadedBytes shortly after cancellation.
+                    // We don't need to do anything extra here — just log.
+                    val entity = dao.getById(media.id)
+                    val dbBytes = entity?.downloadedBytes ?: 0L
+                    Log.d(TAG, "✅ Pause saved (HLS/yt-dlp): id=${media.id} dbBytes=$dbBytes " +
+                            "(isHls=${media.isHls}, useYtDlp=${media.useYtDlp})")
+                }
+            } catch (e: Exception) {
+                Log.w(TAG, "Pause save failed: ${e.message}")
+            }
+        }
+    }
+
+    // ═══════════════════════════════════════════════════════════════
+    // ✅ FIXED: RESUME — Handles both direct HTTP and HLS/yt-dlp
+    //
+    // Direct HTTP: pass actual partial file size as resumeFromBytes
+    // HLS/yt-dlp: pass 0 → they restart fresh (they have their own
+    //             segment management and can't resume mid-stream)
     // ═══════════════════════════════════════════════════════════════
 
     fun resumeDownload(media: MediaEntity) {
         scope.launch {
             try {
                 val dao = VaultDatabase.getDatabase(context).mediaDao()
+
+                // Determine if this is an HLS/yt-dlp download
+                val entity = dao.getById(media.id) ?: return@launch
+                val isStreamDownload = entity.isHls || entity.useYtDlp
+
+                // Find partial file for direct downloads
                 val resumeDir = File(context.filesDir, "vault_downloads")
                 val partialFile = resumeDir.listFiles()
                     ?.filter { it.name.startsWith("dl_${media.id}_") }
                     ?.maxByOrNull { it.length() }
 
-                val actualResumeBytes = if (partialFile != null && partialFile.exists()) {
-                    val fileSize = partialFile.length()
-                    if (media.resumeBytes > 0 && fileSize < media.resumeBytes * 0.9) {
-                        partialFile.delete(); 0L
-                    } else fileSize
-                } else 0L
+                val actualResumeBytes: Long
+                if (isStreamDownload) {
+                    // ✅ HLS/yt-dlp: always restart fresh to avoid partial file corruption
+                    try { partialFile?.delete() } catch (_: Exception) {}
+                    actualResumeBytes = 0L
+                    Log.d(TAG, "Resume (Stream): id=${entity.id} → Clean restart enforced")
+                } else {
+                    // ✅ Direct HTTP: use partial file if valid
+                    actualResumeBytes = if (partialFile != null && partialFile.exists()) {
+                        val fileSize = partialFile.length()
+                        if (entity.resumeBytes > 0 && fileSize < entity.resumeBytes * 0.9) {
+                            Log.w(TAG, "Partial file too small ($fileSize vs ${entity.resumeBytes}) → fresh start")
+                            partialFile.delete()
+                            0L
+                        } else {
+                            Log.d(TAG, "Found partial file: $fileSize bytes")
+                            fileSize
+                        }
+                    } else {
+                        Log.d(TAG, "No partial file found → fresh start")
+                        0L
+                    }
+                }
 
-                dao.setPaused(media.id, false)
-                dao.clearFailure(media.id)
-                dao.clearSpeed(media.id)
-                if (actualResumeBytes != media.resumeBytes) dao.updateProgress(media.id, 0, actualResumeBytes)
+                // Clear paused/failed state
+                dao.setPaused(entity.id, false)
+                dao.clearFailure(entity.id)
+                dao.clearSpeed(entity.id)
 
-                val entity = dao.getById(media.id) ?: return@launch
+                // Reset progress for HLS (will restart), keep for direct
+                if (isStreamDownload) {
+                    dao.updateProgress(entity.id, 0, 0L)
+                } else if (actualResumeBytes != entity.resumeBytes) {
+                    dao.updateProgress(entity.id, 0, actualResumeBytes)
+                }
+
                 val isSilent = try { SecurityPreferenceManager(context).isSilentMode } catch (_: Exception) { false }
 
                 val data = workDataOf(
                     "url" to (entity.downloadUrl ?: ""),
                     "originalUrl" to entity.downloadUrl,
+                    "streamUrl" to (entity.streamUrl ?: ""),   // ← ADD THIS LINE
                     "fileName" to entity.fileName,
                     "mediaId" to entity.id,
                     "mimeType" to entity.mimeType,
-                    "fileType" to entity.fileType,           // ✅ NEW
+                    "fileType" to entity.fileType,
                     "incognito" to false,
                     "silent" to isSilent,
                     "useYtDlp" to entity.useYtDlp,
                     "isHls" to entity.isHls,
                     "resumeFromBytes" to actualResumeBytes,
-                    "duration" to entity.duration             // ✅ NEW
+                    "duration" to entity.duration
                 )
 
                 val request = OneTimeWorkRequestBuilder<MediaDownloadWorker>()
@@ -225,28 +313,33 @@ class DownloadQueueManager(private val context: Context) {
                     .addTag(TAG_ALL_DOWNLOADS)
                     .addTag("download_${entity.id}")
                     .setBackoffCriteria(BackoffPolicy.EXPONENTIAL, 15, TimeUnit.SECONDS)
-                    .setConstraints(Constraints.Builder().setRequiredNetworkType(NetworkType.CONNECTED).build())
+                    .setConstraints(
+                        Constraints.Builder()
+                            .setRequiredNetworkType(NetworkType.CONNECTED)
+                            .build()
+                    )
                     .build()
 
                 workManager.enqueueUniqueWork(workName(entity.id), ExistingWorkPolicy.REPLACE, request)
-                Log.d(TAG, "▶ Resumed: id=${entity.id} from=$actualResumeBytes")
-            } catch (e: Exception) { Log.e(TAG, "Resume failed: ${e.message}", e) }
+                
+                // 🔥 Phase 3: Immediate High-Priority Service Start
+                try {
+                    com.example.nightlibrary.worker.MediaDownloadService.start(context, entity.id)
+                } catch (e: Exception) {
+                    Log.w(TAG, "Failed to start priority service: ${e.message}")
+                }
+
+                Log.d(TAG, "▶ Resumed: id=${entity.id} from=$actualResumeBytes stream=$isStreamDownload")
+            } catch (e: Exception) {
+                Log.e(TAG, "Resume failed: ${e.message}", e)
+            }
         }
     }
 
-    // Pause — unchanged
-    fun pauseDownload(media: MediaEntity) {
-        workManager.cancelUniqueWork(workName(media.id))
-        scope.launch {
-            try {
-                val dao = VaultDatabase.getDatabase(context).mediaDao()
-                dao.setPaused(media.id, true)
-                dao.clearSpeed(media.id)
-            } catch (_: Exception) {}
-        }
-    }
+    // ═══════════════════════════════════════════════════════════════
+    // CANCEL
+    // ═══════════════════════════════════════════════════════════════
 
-    // Cancel — unchanged
     fun cancelDownload(media: MediaEntity) {
         workManager.cancelUniqueWork(workName(media.id))
         scope.launch {
@@ -262,7 +355,10 @@ class DownloadQueueManager(private val context: Context) {
         }
     }
 
-    // Retry — passes duration + fileType
+    // ═══════════════════════════════════════════════════════════════
+    // RETRY
+    // ═══════════════════════════════════════════════════════════════
+
     fun retryDownload(media: MediaEntity) {
         workManager.cancelUniqueWork(workName(media.id))
         scope.launch {
@@ -280,16 +376,17 @@ class DownloadQueueManager(private val context: Context) {
                 val data = workDataOf(
                     "url" to (entity.downloadUrl ?: ""),
                     "originalUrl" to entity.downloadUrl,
+                    "streamUrl" to (entity.streamUrl ?: ""),   // ← ADD THIS LINE
                     "fileName" to entity.fileName,
                     "mediaId" to entity.id,
                     "mimeType" to entity.mimeType,
-                    "fileType" to entity.fileType,           // ✅ NEW
+                    "fileType" to entity.fileType,
                     "incognito" to false,
                     "silent" to isSilent,
                     "useYtDlp" to entity.useYtDlp,
                     "isHls" to entity.isHls,
                     "resumeFromBytes" to 0L,
-                    "duration" to entity.duration             // ✅ NEW
+                    "duration" to entity.duration
                 )
 
                 val request = OneTimeWorkRequestBuilder<MediaDownloadWorker>()
@@ -298,13 +395,28 @@ class DownloadQueueManager(private val context: Context) {
                     .addTag("download_${entity.id}")
                     .setBackoffCriteria(BackoffPolicy.EXPONENTIAL, 15, TimeUnit.SECONDS)
                     .setExpedited(OutOfQuotaPolicy.RUN_AS_NON_EXPEDITED_WORK_REQUEST)
-                    .setConstraints(Constraints.Builder().setRequiredNetworkType(NetworkType.CONNECTED).build())
+                    .setConstraints(
+                        Constraints.Builder()
+                            .setRequiredNetworkType(NetworkType.CONNECTED)
+                            .build()
+                    )
                     .build()
 
                 workManager.enqueueUniqueWork(workName(entity.id), ExistingWorkPolicy.REPLACE, request)
+
+                // 🔥 Phase 3: Immediate High-Priority Service Start
+                try {
+                    com.example.nightlibrary.worker.MediaDownloadService.start(context, entity.id)
+                } catch (e: Exception) {
+                    Log.w(TAG, "Failed to start priority service: ${e.message}")
+                }
             } catch (e: Exception) { Log.e(TAG, "Retry failed: ${e.message}", e) }
         }
     }
+
+    // ═══════════════════════════════════════════════════════════════
+    // CANCEL ALL
+    // ═══════════════════════════════════════════════════════════════
 
     fun cancelAllDownloads() {
         workManager.cancelAllWorkByTag(TAG_ALL_DOWNLOADS)
@@ -313,11 +425,19 @@ class DownloadQueueManager(private val context: Context) {
                 val dao = VaultDatabase.getDatabase(context).mediaDao()
                 val active = dao.getActiveDownloadsOnce()
                 for (media in active) {
-                    try { cleanupTempFiles(media.id); File(media.vaultFolder).deleteRecursively(); dao.deleteById(media.id) } catch (_: Exception) {}
+                    try {
+                        cleanupTempFiles(media.id)
+                        File(media.vaultFolder).deleteRecursively()
+                        dao.deleteById(media.id)
+                    } catch (_: Exception) {}
                 }
             } catch (_: Exception) {}
         }
     }
+
+    // ═══════════════════════════════════════════════════════════════
+    // CLEANUP
+    // ═══════════════════════════════════════════════════════════════
 
     fun cleanupOrphanedFiles() {
         scope.launch {
@@ -330,7 +450,9 @@ class DownloadQueueManager(private val context: Context) {
                     if (mediaId != null) {
                         val entity = dao.getById(mediaId)
                         if (entity == null || entity.isCompleted || entity.isInTrash) file.delete()
-                    } else if (System.currentTimeMillis() - file.lastModified() > 24 * 60 * 60 * 1000L) file.delete()
+                    } else if (System.currentTimeMillis() - file.lastModified() > 24 * 60 * 60 * 1000L) {
+                        file.delete()
+                    }
                 }
             } catch (_: Exception) {}
         }

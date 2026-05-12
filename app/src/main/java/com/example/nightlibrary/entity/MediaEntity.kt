@@ -31,6 +31,7 @@ data class MediaEntity(
     val progress: Int,
     val checksum: String,
     val downloadUrl: String? = null,
+    val streamUrl: String? = null,       // ← ADD THIS LINE
     val resumeBytes: Long = 0L,
     val isInTrash: Boolean = false,
     val isPaused: Boolean = false,
@@ -43,5 +44,7 @@ data class MediaEntity(
     val createdAt: Long = System.currentTimeMillis(),
     val currentSpeed: Double = 0.0,
     // ✅ NEW — Problem 6
-    val duration: Long = 0L
+    val duration: Long = 0L,
+    // 🔒 Private Import Support
+    val isPrivate: Boolean = false
 )

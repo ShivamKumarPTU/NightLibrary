@@ -14,6 +14,7 @@ import com.example.nightlibrary.core.security.VaultFileManager
 import com.example.nightlibrary.database.VaultDatabase
 import com.example.nightlibrary.entity.MediaEntity
 import com.example.nightlibrary.security.ChunkEncryptor
+import com.example.nightlibrary.security.IntegrityVerifier
 import com.example.nightlibrary.security.VaultCryptoEngine
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Deferred
@@ -140,6 +141,8 @@ class LocalImportWorker(
                 var totalSize = 0L
                 var chunkCount = 0
 
+                var finalChecksum = fingerprint
+
                 coroutineScope {
                     thumbDeferred = async(Dispatchers.IO) {
                         dao.updateProgress(mediaId, 5, 0L)
@@ -157,6 +160,9 @@ class LocalImportWorker(
                         )
                         totalSize = encryptedFile.length()
                         chunkCount = 1
+                        
+                        // ✅ FIX: Store checksum of ENCRYPTED file for integrity check
+                        finalChecksum = IntegrityVerifier.generateChecksum(encryptedFile)
 
                         dao.updateProgress(mediaId, 95, 0L)
                         setProgressAsync(workDataOf("progress" to 95, "mediaId" to mediaId))
@@ -196,6 +202,12 @@ class LocalImportWorker(
                         }
                         totalSize = index.totalFileSize
                         chunkCount = index.chunkCount
+                        
+                        // ✅ FIX: Store checksum of first ENCRYPTED chunk for PDF integrity check
+                        val firstChunk = File(finalVaultFolder!!, "chunk_0.enc")
+                        if (firstChunk.exists()) {
+                            finalChecksum = IntegrityVerifier.generateChecksum(firstChunk)
+                        }
                     }
                 }
 
@@ -217,7 +229,7 @@ class LocalImportWorker(
                         fileType = fileType,
                         isCompleted = true,
                         progress = 100,
-                        checksum = fingerprint,
+                        checksum = finalChecksum,
                         filePath = "",
                         thumbnailPath = thumbnailPath,
                         downloadUrl = null,

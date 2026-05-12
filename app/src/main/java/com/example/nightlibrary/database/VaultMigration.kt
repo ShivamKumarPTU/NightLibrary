@@ -53,14 +53,16 @@ object VaultMigrations {
         override fun migrate(db: SupportSQLiteDatabase) {
             try {
                 // 1. Remove duplicates before applying unique index
-                db.execSQL("""
+                // 🔥 SQLCipher fix: Use query() and moveToFirst() for statements that might be misidentified as queries
+                // or that return values. DELETE with sub-select can sometimes be misidentified.
+                db.query("""
                     DELETE FROM contacts 
                     WHERE id NOT IN (
                         SELECT MIN(id) 
                         FROM contacts 
                         GROUP BY phone
                     )
-                """.trimIndent())
+                """.trimIndent()).use { it.moveToFirst() }
                 
                 // 2. Create the unique index
                 db.execSQL("CREATE UNIQUE INDEX IF NOT EXISTS `index_contacts_phone` ON `contacts` (`phone`)")
@@ -69,6 +71,23 @@ object VaultMigrations {
                 Log.e(TAG, "Migration 10→11 Critical Failure: ${e.message}")
                 throw e // Rethrow so Room knows migration failed if it truly can't apply
             }
+        }
+    }
+
+    val MIGRATION_11_12 = object : Migration(11, 12) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            safeAddColumn(db, "media", "streamUrl", "TEXT DEFAULT NULL")
+            Log.d(TAG, "Migration 11→12: Added streamUrl column")
+        }
+    }
+
+    /**
+     * Migration 12→13: Add isPrivate column for Private Import Mode persistence.
+     */
+    val MIGRATION_12_13 = object : Migration(12, 13) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            safeAddColumn(db, "media", "isPrivate", "INTEGER NOT NULL DEFAULT 0")
+            Log.d(TAG, "Migration 12→13: Added isPrivate column")
         }
     }
 

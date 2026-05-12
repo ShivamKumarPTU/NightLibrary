@@ -20,7 +20,7 @@
         android:orientation="vertical"
         android:paddingStart="32dp"
         android:paddingEnd="32dp"
-        app:layout_constraintBottom_toTopOf="@+id/continueButton"
+        app:layout_constraintBottom_toTopOf="@+id/continueButton2"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintHorizontal_bias="1.0"
         app:layout_constraintStart_toStartOf="parent"

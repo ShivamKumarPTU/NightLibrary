@@ -9,6 +9,7 @@ import androidx.media3.datasource.DataSource
 import androidx.media3.datasource.DataSpec
 import androidx.media3.datasource.TransferListener
 import com.example.nightlibrary.security.ChunkCache
+import com.example.nightlibrary.security.ChunkIndexReader
 import com.example.nightlibrary.security.VaultCryptoEngine
 import java.io.File
 import java.io.IOException
@@ -153,25 +154,27 @@ class ChunkedEncryptedDataSource(
     }
 
     private fun readFromChunks(buffer: ByteArray, offset: Int, length: Int): Int {
+        if (bytesRemaining <= 0) return C.RESULT_END_OF_INPUT
         val toRead = minOf(length.toLong(), bytesRemaining).toInt()
+        if (toRead <= 0) return C.RESULT_END_OF_INPUT
+        
         var bytesRead = 0
-
         while (bytesRead < toRead) {
             val chunkIndex = (currentPosition / chunkSize).toInt()
             val offsetInChunk = (currentPosition % chunkSize).toInt()
 
-            if (chunkIndex >= chunkCount) {
-                return if (bytesRead > 0) bytesRead else C.RESULT_END_OF_INPUT
-            }
+            if (chunkIndex >= chunkCount) break
 
-            val chunkData = getDecryptedChunk(chunkIndex)
-                ?: return if (bytesRead > 0) bytesRead else C.RESULT_END_OF_INPUT
+            val chunkData = getDecryptedChunk(chunkIndex) ?: break
 
             val availableInChunk = chunkData.size - offsetInChunk
-            if (availableInChunk <= 0) break
+            if (availableInChunk <= 0) {
+                // Skip to next chunk if this one is exhausted or unexpectedly short
+                currentPosition = ((chunkIndex + 1) * chunkSize).toLong()
+                continue
+            }
 
             val copyLen = minOf(toRead - bytesRead, availableInChunk)
-
             System.arraycopy(chunkData, offsetInChunk, buffer, offset + bytesRead, copyLen)
 
             bytesRead += copyLen

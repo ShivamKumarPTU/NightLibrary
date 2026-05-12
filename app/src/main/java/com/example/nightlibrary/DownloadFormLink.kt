@@ -557,19 +557,24 @@ class DownloadFormLink : Fragment() {
         viewLifecycleOwner.lifecycleScope.launch {
             try {
                 val ctx = context ?: return@launch
+                
+                // Ensure pageUrl is never null or empty; fall back to streamUrl
+                val pageUrl = if (!info.pageUrl.isNullOrEmpty()) info.pageUrl else streamUrl
+
                 DownloadQueueManager(ctx).enqueueDownload(
                     downloadUrl = streamUrl,
                     fileName = fileName,
                     incognito = incognito,
-                    silent = silent,                                    // 🔇 NEW
+                    silent = silent,
                     mimeType = if (info.fileType == "audio") "audio/mpeg" else "video/mp4",
                     headers = headers ?: info.headers.ifEmpty { null },
-                    originalUrl = info.pageUrl,
+                    originalUrl = pageUrl,                            // ✅ CORRECT PASS
                     formatId = formatId ?: info.formatId,
                     useYtDlp = info.useYtDlp,
                     isHls = info.isHls,
-                    duration = info.duration,                           // ✅ NEW — Problem 6
-                    fileType = info.fileType                            // ✅ NEW — Feature A
+                    duration = info.duration,
+                    fileType = info.fileType,
+                    streamUrl = if (streamUrl != pageUrl) streamUrl else null   // ← ADD THIS
                 )
 
                 viewModel.notifyDownloadStarted()

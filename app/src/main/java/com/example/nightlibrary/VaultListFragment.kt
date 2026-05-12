@@ -39,6 +39,7 @@ import com.example.nightlibrary.security.SecureScreenManager
 import com.example.nightlibrary.viewmodel.VaultViewModel
 import com.example.nightlibrary.worker.VideoPlayerPool
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.collectLatest
@@ -162,7 +163,7 @@ class VaultListFragment : Fragment(R.layout.fragment_vault_list) {
     /**
      * ✅ NEW: Combines three data sources into a sectioned list.
      */
-    @OptIn(kotlinx.coroutines.FlowPreview::class)
+    @OptIn(FlowPreview::class, FlowPreview::class, FlowPreview::class)
     private fun observeInProgress() {
         viewLifecycleOwner.lifecycleScope.launch {
             combine(

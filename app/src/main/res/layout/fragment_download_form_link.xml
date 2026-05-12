@@ -91,7 +91,7 @@
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="Import directly into your secure vault"
+                        android:text="Hidden import with no download history"
                         android:textColor="@color/text_muted"
                         android:textSize="13sp" />
                 </LinearLayout>

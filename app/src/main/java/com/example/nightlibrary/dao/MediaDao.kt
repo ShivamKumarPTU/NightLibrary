@@ -49,27 +49,28 @@ interface MediaDao {
         SELECT * FROM media
         WHERE isInTrash = 0 
         AND isCompleted = 1
+        AND isPrivate = 0
         ORDER BY createdAt DESC
         LIMIT 500
     """)
     fun getCompleted(): Flow<List<MediaEntity>>
 
-    @Query("SELECT * FROM media WHERE isInTrash = 0 ORDER BY createdAt DESC")
+    @Query("SELECT * FROM media WHERE isInTrash = 0 AND isPrivate = 0 ORDER BY createdAt DESC")
     fun pagingMedia(): PagingSource<Int, MediaEntity>
 
-    @Query("SELECT * FROM media WHERE isInTrash = 0 AND fileType = :type ORDER BY createdAt DESC")
+    @Query("SELECT * FROM media WHERE isInTrash = 0 AND isPrivate = 0 AND fileType = :type ORDER BY createdAt DESC")
     suspend fun getByTypeOnce(type: String): List<MediaEntity>
 
-    @Query("SELECT * FROM media WHERE isInTrash = 0 AND fileType = 'image' ORDER BY createdAt DESC")
+    @Query("SELECT * FROM media WHERE isInTrash = 0 AND isPrivate = 0 AND fileType = 'image' ORDER BY createdAt DESC")
     fun getImages(): Flow<List<MediaEntity>>
 
-    @Query("SELECT * FROM media WHERE isInTrash = 0 AND fileType = 'image' ORDER BY createdAt DESC")
+    @Query("SELECT * FROM media WHERE isInTrash = 0 AND isPrivate = 0 AND fileType = 'image' ORDER BY createdAt DESC")
     suspend fun getImagesOrdered(): List<MediaEntity>
 
-    @Query("SELECT * FROM media WHERE isInTrash = 0 AND fileType = 'image' ORDER BY createdAt DESC")
+    @Query("SELECT * FROM media WHERE isInTrash = 0 AND isPrivate = 0 AND fileType = 'image' ORDER BY createdAt DESC")
     suspend fun getImagesOnce(): List<MediaEntity>
 
-    @Query("SELECT * FROM media WHERE isInTrash = 0 AND fileType LIKE '%video%' ORDER BY createdAt DESC")
+    @Query("SELECT * FROM media WHERE isInTrash = 0 AND isPrivate = 0 AND fileType LIKE '%video%' ORDER BY createdAt DESC")
     suspend fun getVideosOnce(): List<MediaEntity>
 
     @Query("SELECT * FROM media WHERE vaultFolder = :folder LIMIT 1")
@@ -80,15 +81,16 @@ interface MediaDao {
         SELECT * FROM media 
         WHERE isInTrash = 0 
         AND isCompleted = 0 
+        AND isPrivate = 0
         ORDER BY createdAt DESC
     """)
     fun getInProgress(): Flow<List<MediaEntity>>
-
 
     @Query("""
         SELECT * FROM media 
         WHERE isInTrash = 0 
         AND isCompleted = 0 
+        AND isPrivate = 0
         AND downloadUrl IS NOT NULL 
         AND downloadUrl != ''
         ORDER BY createdAt DESC
@@ -103,6 +105,7 @@ interface MediaDao {
         SELECT * FROM media 
         WHERE isInTrash = 0 
         AND isCompleted = 0 
+        AND isPrivate = 0
         AND (downloadUrl IS NULL OR downloadUrl = '')
         ORDER BY createdAt DESC
     """)
@@ -200,19 +203,19 @@ interface MediaDao {
     // COUNTS & AGGREGATES
     // ═══════════════════════════════════════════════════════════════
 
-    @Query("SELECT COUNT(*) FROM media WHERE isInTrash = 0")
+    @Query("SELECT COUNT(*) FROM media WHERE isInTrash = 0 AND isPrivate = 0")
     fun getCount(): Flow<Int>
 
     /**
      * ✅ NEW: Count of active operations — used for tab badge.
      */
-    @Query("SELECT COUNT(*) FROM media WHERE isInTrash = 0 AND isCompleted = 0")
+    @Query("SELECT COUNT(*) FROM media WHERE isInTrash = 0 AND isCompleted = 0 AND isPrivate = 0")
     fun getInProgressCount(): Flow<Int>
 
-    @Query("SELECT SUM(fileSize) FROM media WHERE isInTrash = 0")
+    @Query("SELECT SUM(fileSize) FROM media WHERE isInTrash = 0 AND isPrivate = 0")
     fun getTotalStorageUsed(): Flow<Long?>
 
-    @Query("SELECT COALESCE(SUM(fileSize), 0) FROM media")
+    @Query("SELECT COALESCE(SUM(fileSize), 0) FROM media WHERE isPrivate = 0")
     fun getTotalSize(): Flow<Long>
 
     // ═══════════════════════════════════════════════════════════════
@@ -280,9 +283,32 @@ interface MediaDao {
         WHERE isInTrash = 0 
         AND fileType = :type 
         AND isCompleted = 1
+        AND isPrivate = 0
         ORDER BY createdAt DESC
     """)
     fun getCompletedByType(type: String): Flow<List<MediaEntity>>
+
+    // ═══════════════════════════════════════════════════════════════
+    // 🔒 PRIVATE QUERIES
+    // ═══════════════════════════════════════════════════════════════
+
+    @Query("""
+        SELECT * FROM media 
+        WHERE isInTrash = 0 
+        AND isCompleted = 1 
+        AND isPrivate = 1 
+        ORDER BY createdAt DESC
+    """)
+    fun getPrivateCompleted(): Flow<List<MediaEntity>>
+
+    @Query("""
+        SELECT * FROM media 
+        WHERE isInTrash = 0 
+        AND isCompleted = 0 
+        AND isPrivate = 1 
+        ORDER BY createdAt DESC
+    """)
+    fun getPrivateInProgress(): Flow<List<MediaEntity>>
 
     // ═══════════════════════════════════════════════════════════════
     // ✅ NEW: Duration update — Problem 6
@@ -308,6 +334,9 @@ interface MediaDao {
         WHERE id = :mediaId
     """)
     suspend fun markCompleted(mediaId: Long, duration: Long, finalSize: Long)
+
+    @Query("UPDATE media SET streamUrl = :streamUrl WHERE id = :mediaId")
+    suspend fun updateStreamUrl(mediaId: Long, streamUrl: String?)
 // Add to MediaDao.kt — anywhere in the interface
 
     /**

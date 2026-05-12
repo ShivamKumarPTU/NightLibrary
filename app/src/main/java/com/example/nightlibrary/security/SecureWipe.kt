@@ -1,6 +1,8 @@
 package com.example.nightlibrary.security
 
-import androidx.media3.common.util.Log
+import android.util.Log
+import androidx.annotation.OptIn
+import androidx.media3.common.util.UnstableApi
 import java.io.File
 import java.io.RandomAccessFile
 import kotlin.random.Random
@@ -26,6 +28,7 @@ object SecureWipe {
 
         file.delete()
     }
+    @OptIn(UnstableApi::class)
     fun wipeVaultFolder(folder: File) {
 
         if (!folder.exists()) return
@@ -36,7 +39,7 @@ object SecureWipe {
 
         folder.delete()
 
-        Log.d("SecureWipe", "Vault folder wiped: ${folder.name}")
+        android.util.Log.d("SecureWipe", "Vault folder wiped: ${folder.name}")
     }
 }
 

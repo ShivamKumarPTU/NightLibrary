@@ -41,7 +41,7 @@ import androidx.media3.ui.PlayerView
 import com.example.nightlibrary.NightLibraryApp
 import com.example.nightlibrary.R
 import com.example.nightlibrary.core.player.VaultPlayerFactory
-import com.example.nightlibrary.core.security.ChunkIndexReader
+import com.example.nightlibrary.security.ChunkIndexReader
 import com.example.nightlibrary.core.security.ChunkedEncryptedDataSource
 import com.example.nightlibrary.core.security.SecureShareHelper
 import com.example.nightlibrary.databinding.ActivitySecureVideoBinding

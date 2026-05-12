@@ -43,6 +43,12 @@ class BiometricFragment : Fragment() {
         }
     }
 
+    override fun onStop() {
+        super.onStop()
+        // Reset flag so if user returns from background, the prompt is shown again
+        hasShownPrompt = false
+    }
+
     // REMOVED onViewCreated() as it's no longer needed to call the prompt.
 
     private fun showBiometricPrompt() {

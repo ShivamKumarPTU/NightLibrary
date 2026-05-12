@@ -43,7 +43,10 @@ data class ShareTask(
     val error: String? = null,
 
     /** Timestamp when share started — used for auto-cleanup */
-    val startedAt: Long = System.currentTimeMillis()
+    val startedAt: Long = System.currentTimeMillis(),
+
+    /** ✅ NEW: Whether files were compressed into a ZIP for sharing */
+    val isZipped: Boolean = false
 ) {
     /**
      * Returns a user-friendly summary string.
@@ -51,9 +54,11 @@ data class ShareTask(
      */
     val displayStatus: String
         get() = when {
-            isCompleted -> "✓ Shared ${totalFiles} file(s)"
+            isCompleted && isZipped -> "✓ Shared $totalFiles file(s) as ZIP"
+            isCompleted -> "✓ Shared $totalFiles file(s)"
             isCancelled -> "Cancelled"
             error != null -> "Failed: ${error?.take(50)}"
+            isZipped && overallProgress > 70 -> "Creating ZIP… ${overallProgress}%"
             totalFiles <= 1 -> status
             else -> "Decrypting ${currentFileIndex + 1}/$totalFiles…"
         }

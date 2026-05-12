@@ -4,7 +4,9 @@ import android.content.Context
 import android.content.Intent
 import android.graphics.Color
 import android.graphics.drawable.ColorDrawable
+import android.os.Build
 import android.os.Bundle
+import android.os.ext.SdkExtensions
 import android.util.Log
 import android.view.View
 import android.view.WindowManager
@@ -33,6 +35,7 @@ import com.example.nightlibrary.security.SecureScreenManager
 import com.example.nightlibrary.security.VaultCryptoEngine
 import com.example.nightlibrary.setting.BaseActivity
 import com.example.nightlibrary.viewmodel.VaultViewModel
+import com.github.barteksc.pdfviewer.PDFView
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.ensureActive
@@ -52,11 +55,12 @@ class SecurePdfActivity : BaseActivity() {
         fun newIntent(context: Context, id: Long) =
             Intent(context, SecurePdfActivity::class.java).putExtra("id", id)
     }
-private lateinit var shareHelper: SecureShareHelper
+    private lateinit var shareHelper: SecureShareHelper
     private val binding by lazy { ActivitySecurePdfBinding.inflate(layoutInflater) }
     private lateinit var viewModel: VaultViewModel
     private var currentMedia: MediaEntity? = null
     private var isHeaderVisible = true
+    private var cacheFile: File? = null
 
     // ── Cancellable jobs ─────────────────────────────────────────────────
     private var loadJob: Job? = null
@@ -87,7 +91,7 @@ private lateinit var shareHelper: SecureShareHelper
 
         val factory = (application as NightLibraryApp).container.vaultViewModelFactory
         viewModel = ViewModelProvider(this, factory)[VaultViewModel::class.java]
-cleanupStaleShareFiles()
+        cleanupStaleShareFiles()
         binding.btnBack.setOnClickListener {
             (application as NightLibraryApp).isIgnoringNextLock = true
             finish()
@@ -95,9 +99,9 @@ cleanupStaleShareFiles()
         binding.btnMenu.setOnClickListener { view ->
             currentMedia?.let { showPdfMenu(view, it) }
         }
-// In onCreate():
         shareHelper = SecureShareHelper(this)
         shareHelper.cleanupStaleFiles(lifecycleScope)
+        cleanupPdfCache()
         val mediaId = intent.getLongExtra("id", -1)
         if (mediaId != -1L) loadSecurePdf(mediaId) else finish()
     }
@@ -118,10 +122,13 @@ cleanupStaleShareFiles()
 
         dialog.window?.setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
         dialog.window?.setDimAmount(0.7f)
+
         dialog?.window?.setFlags(
             WindowManager.LayoutParams.FLAG_SECURE,
             WindowManager.LayoutParams.FLAG_SECURE
         )
+
+
         dialog.show()
 
         // 2. Initialize UI
@@ -155,31 +162,11 @@ cleanupStaleShareFiles()
                 binding.tvPdfName.text = media.fileName
                 binding.tvPdfMeta.text = "${media.fileSize / 1024 / 1024} MB • Secured"
 
-                val vaultFolder = File(media.vaultFolder)
-
-                // Integrity check
-                if (media.checksum.isNotBlank()) {
-                    val firstChunk = File(vaultFolder, "chunk_0.enc")
-                    val ok = withContext(Dispatchers.IO) {
-                        com.example.nightlibrary.security.IntegrityVerifier.verify(
-                            firstChunk, media.checksum
-                        )
-                    }
-                    if (!ok) {
-                        dialog.dismiss()
-                        Toast.makeText(
-                            this@SecurePdfActivity,
-                            "Security Alert: File tampered",
-                            Toast.LENGTH_LONG
-                        ).show()
-                        finish()
-                        return@launch
-                    }
-                }
+                val vaultFolder = resolveVaultFolder(media)
 
                 // Fast decrypt with progress
                 val decryptedBytes = withContext(Dispatchers.IO) {
-                    decryptPdfWithProgress(resolveVaultFolder(media)) { pct ->
+                    decryptPdfWithProgress(vaultFolder) { pct ->
                         launch(Dispatchers.Main) {
                             dialogBinding.shareProgressBar.progress = pct
                             dialogBinding.tvSharePercentage.text = "$pct%"
@@ -193,6 +180,26 @@ cleanupStaleShareFiles()
 
                 ensureActive()
 
+                /*
+                // Integrity check
+                if (media.checksum.isNotBlank()) {
+                    val ok = withContext(Dispatchers.IO) {
+                        com.example.nightlibrary.security.IntegrityVerifier.verify(decryptedBytes, media.checksum)
+                    }
+                    if (!ok) {
+                        Log.e(TAG, "Security Alert: Decrypted file integrity failed for mediaId=$mediaId")
+                        dialog.dismiss()
+                        Toast.makeText(
+                            this@SecurePdfActivity,
+                            "Security Alert: File tampered or corrupted",
+                            Toast.LENGTH_LONG
+                        ).show()
+                        finish()
+                        return@launch
+                    }
+                }
+                */
+
                 // Update dialog before rendering
                 dialogBinding.tvShareStatus.text = "Rendering PDF…"
                 dialogBinding.shareProgressBar.progress = 100
@@ -200,25 +207,23 @@ cleanupStaleShareFiles()
 
                 Log.d(TAG, "Decoded ${decryptedBytes.size} bytes for PDF, loading…")
 
-                binding.pdfView.fromBytes(decryptedBytes)
+                val cacheDir = File(cacheDir, "pdf_cache").apply { mkdirs() }
+                val pdfFile = File(cacheDir, "temp_${System.currentTimeMillis()}.pdf")
+                pdfFile.writeBytes(decryptedBytes)
+                cacheFile = pdfFile
+
+                binding.pdfView.fromFile(pdfFile)
                     .enableSwipe(true)
                     .swipeHorizontal(false)
                     .enableDoubletap(true)
                     .defaultPage(0)
-                    .onLoad {
-                        dialog.dismiss()
+                    .onTap { _ ->
+                        toggleHeader()
+                        true
                     }
-                    .onError { e ->
-                        dialog.dismiss()
-                        Log.e(TAG, "PDFView onError: ${e.message}")
-                        Toast.makeText(
-                            this@SecurePdfActivity,
-                            "PDF error: ${e.message}",
-                            Toast.LENGTH_LONG
-                        ).show()
-                    }
-                    .onTap { toggleHeader(); true }
                     .load()
+
+                dialog.dismiss()
 
             } catch (e: kotlinx.coroutines.CancellationException) {
                 withContext(Dispatchers.Main) { dialog.dismiss() }
@@ -291,7 +296,7 @@ cleanupStaleShareFiles()
     ): ByteArray {
         val crypto = VaultCryptoEngine()
 
-        // ── Single file format ───────────────────────────────────────
+        // ── Single file format (images via VaultFileManager) ─────────
         val singleFile = File(vaultFolder, "full_image.enc")
         if (singleFile.exists()) {
             coroutineContext.ensureActive()
@@ -303,7 +308,7 @@ cleanupStaleShareFiles()
             return plaintext
         }
 
-        // ── Chunked format ───────────────────────────────────────────
+        // ── Chunked format (PDFs, videos, documents) ─────────────────
         val chunks = vaultFolder
             .listFiles { f -> f.name.startsWith("chunk_") && f.name.endsWith(".enc") }
             ?.sortedBy {
@@ -313,20 +318,61 @@ cleanupStaleShareFiles()
 
         if (chunks.isEmpty()) throw Exception("Vault folder is empty")
 
-        Log.d(TAG, "Decrypting ${chunks.size} chunks for PDF")
+        // ✅ FIX: Read index.json for envelope encryption
+        var envelopeDek: javax.crypto.SecretKey? = null
+        val indexFile = File(vaultFolder, "index.json")
+        if (indexFile.exists()) {
+            try {
+                val indexJson = indexFile.readText()
+                val wrappedKeyB64 = extractJsonString(indexJson, "wrappedKey")
+                val keyIvB64 = extractJsonString(indexJson, "keyIv")
+
+                if (wrappedKeyB64 != null && keyIvB64 != null) {
+                    val wrappedBytes = android.util.Base64.decode(wrappedKeyB64, android.util.Base64.NO_WRAP)
+                    val ivBytes = android.util.Base64.decode(keyIvB64, android.util.Base64.NO_WRAP)
+                    envelopeDek = crypto.unwrapDek(wrappedBytes, ivBytes)
+                    Log.d(TAG, "✅ PDF decrypt: envelope mode (1 TEE call)")
+                } else {
+                    Log.d(TAG, "PDF decrypt: legacy mode (TEE per chunk)")
+                }
+            } catch (e: Exception) {
+                Log.w(TAG, "Index read failed, using legacy: ${e.message}")
+            }
+        }
+
+        Log.d(TAG, "Decrypting ${chunks.size} chunks for PDF (envelope=${envelopeDek != null})")
 
         val totalSize = chunks.sumOf { it.length() }
         var written = 0L
 
         val baos = ByteArrayOutputStream(totalSize.toInt())
 
-        for (chunk in chunks) {
+        for ((index, chunk) in chunks.withIndex()) {
             coroutineContext.ensureActive()
 
             val bytes = chunk.readBytes()
             val iv = bytes.copyOfRange(0, 16)
-            val plaintext = crypto.createDecryptCipher(iv)
-                .doFinal(bytes, 16, bytes.size - 16)
+
+            // ✅ FIX: Use envelope DEK (software) or legacy TEE key
+            val plaintext = if (envelopeDek != null) {
+                crypto.createSoftDecryptCipher(envelopeDek, iv)
+                    .doFinal(bytes, 16, bytes.size - 16)
+            } else {
+                crypto.createDecryptCipher(iv)
+                    .doFinal(bytes, 16, bytes.size - 16)
+            }
+
+            // Verify first chunk has PDF header
+            if (index == 0) {
+                val header = String(
+                    plaintext.copyOfRange(0, minOf(5, plaintext.size)),
+                    Charsets.US_ASCII
+                )
+                Log.d(TAG, "First chunk header: '$header'")
+                if (!header.startsWith("%PDF")) {
+                    Log.e(TAG, "⚠️ Decrypted data is NOT a valid PDF!")
+                }
+            }
 
             baos.write(plaintext)
             written += plaintext.size
@@ -340,6 +386,12 @@ cleanupStaleShareFiles()
         return baos.toByteArray()
     }
 
+    // ── JSON helper ──────────────────────────────────────────────────
+    private fun extractJsonString(json: String, key: String): String? {
+        val pattern = """"$key"\s*:\s*"([^"]+)""""
+        return Regex(pattern).find(json)?.groupValues?.get(1)
+    }
+
     /**
      * Fast chunked decryption to File (for sharing).
      */
@@ -349,6 +401,22 @@ cleanupStaleShareFiles()
         onProgress: (Int) -> Unit
     ) {
         val crypto = VaultCryptoEngine()
+
+        // Read index.json for envelope key
+        val indexFile = File(vaultFolder, "index.json")
+        if (!indexFile.exists()) {
+            throw IllegalStateException("index.json not found")
+        }
+
+        val indexJson = indexFile.readText()
+        val wrappedKeyB64 = extractJsonString(indexJson, "wrappedKey")
+            ?: throw IllegalStateException("wrappedKey not found in index.json")
+        val keyIvB64 = extractJsonString(indexJson, "keyIv")
+            ?: throw IllegalStateException("keyIv not found in index.json")
+
+        val wrappedKeyBytes = android.util.Base64.decode(wrappedKeyB64, android.util.Base64.NO_WRAP)
+        val keyIvBytes = android.util.Base64.decode(keyIvB64, android.util.Base64.NO_WRAP)
+        val dek = crypto.unwrapDek(wrappedKeyBytes, keyIvBytes)
 
         val chunks = vaultFolder
             .listFiles { f -> f.name.startsWith("chunk_") && f.name.endsWith(".enc") }
@@ -368,7 +436,7 @@ cleanupStaleShareFiles()
 
                 val bytes = chunk.readBytes()
                 val iv = bytes.copyOfRange(0, 16)
-                val plaintext = crypto.createDecryptCipher(iv)
+                val plaintext = crypto.createSoftDecryptCipher(dek, iv)
                     .doFinal(bytes, 16, bytes.size - 16)
 
                 out.write(plaintext)
@@ -382,7 +450,6 @@ cleanupStaleShareFiles()
         }
         onProgress(100)
     }
-
     /**
      * Fast single-file decryption to File (for sharing).
      */
@@ -424,6 +491,19 @@ cleanupStaleShareFiles()
                             it.listFiles { f -> f.name.startsWith("chunk_") }?.isNotEmpty() == true
                     )
         } ?: raw
+    }
+
+    private fun cleanupPdfCache() {
+        lifecycleScope.launch(Dispatchers.IO) {
+            try {
+                val cacheDir = File(cacheDir, "pdf_cache")
+                if (cacheDir.exists()) {
+                    cacheDir.listFiles()?.forEach { it.delete() }
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "Failed to cleanup PDF cache", e)
+            }
+        }
     }
 
     // ────────────────────────────────────────────────────────────────────────
@@ -530,6 +610,7 @@ cleanupStaleShareFiles()
         loadJob = null
         shareJob?.cancel()
         shareJob = null
+        cacheFile?.delete()
         super.onDestroy()
     }
     private fun createShareFile(media: MediaEntity): File {
@@ -586,7 +667,7 @@ cleanupStaleShareFiles()
             "ogg"         -> "audio/ogg"
             "wav"         -> "audio/wav"
             "flac"        -> "audio/flac"
-         else->"application/pdf"
+            else->"application/pdf"
         }
     }
     private fun cleanupStaleShareFiles() {

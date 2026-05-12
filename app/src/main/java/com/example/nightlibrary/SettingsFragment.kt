@@ -5,6 +5,8 @@ import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.content.Context
 import android.content.Intent
+import android.graphics.Color
+import android.graphics.drawable.ColorDrawable
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
@@ -14,13 +16,18 @@ import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.view.WindowManager
 import android.widget.Toast
 import androidx.activity.result.ActivityResultLauncher
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.lifecycleScope
+import com.example.nightlibrary.databinding.DialogDeletePhotoBinding
+import com.example.nightlibrary.databinding.DialogQuickLaucherBinding
+import com.example.nightlibrary.databinding.DialogShareProgressBinding
 import com.example.nightlibrary.databinding.FragmentSettingsBinding
+import com.example.nightlibrary.entity.MediaEntity
 import com.example.nightlibrary.manager.DownloadQueueManager
 import com.example.nightlibrary.preferences.SecurityPreferenceManager
 import com.example.nightlibrary.setting.FloatingLauncherService
@@ -28,7 +35,7 @@ import com.example.nightlibrary.viewmodel.VaultViewModel
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 
-class settingsFragment : Fragment() {
+class SettingsFragment : Fragment() {
 
     companion object {
         private const val TAG = "SettingsFragment"
@@ -84,6 +91,7 @@ class settingsFragment : Fragment() {
 
         setupSwitchStates()
         setupListeners()
+        observePrivateMedia()
 
         if (prefs.isFloatingLauncherEnabled && Settings.canDrawOverlays(requireContext())) {
             startFloatingService()
@@ -122,7 +130,28 @@ class settingsFragment : Fragment() {
     // ✅ IMPROVED: SWITCH LISTENERS
     // ═══════════════════════════════════════════════════════════════
 
+    private fun observePrivateMedia() {
+        viewLifecycleOwner.lifecycleScope.launch {
+            viewModel.totalPrivateCount.collectLatest { count ->
+                if (_binding == null) return@collectLatest
+                
+                if (count > 0) {
+                    binding.tvPrivateCount.text = "$count item(s) in private vault"
+                    binding.tvBadgeNew.visibility = View.VISIBLE
+                } else {
+                    binding.tvPrivateCount.text = "View items from Private Import Mode"
+                    binding.tvBadgeNew.visibility = View.GONE
+                }
+            }
+        }
+    }
+
     private fun setupListeners() {
+        // ── Private Imports ──────────────────────────────────────────
+        binding.cardPrivateImports.setOnClickListener {
+            // TODO: Navigate to PrivateVaultFragment
+            Toast.makeText(requireContext(), "Opening Private Vault...", Toast.LENGTH_SHORT).show()
+        }
 
         // ── Quick Launcher ──────────────────────────────────────────
         binding.switchQuickLauncher.setOnCheckedChangeListener { _, enabled ->
@@ -133,9 +162,6 @@ class settingsFragment : Fragment() {
                 showFeedback("Quick Launcher disabled")
             }
         }
-
-
-
 
         // ── Emergency Lock ──────────────────────────────────────────
         binding.switchEmergencyLock.setOnCheckedChangeListener { _, enabled ->
@@ -172,53 +198,7 @@ class settingsFragment : Fragment() {
      * - Shows filename, progress, speed
      * - Completion notification appears briefly
      */
-    private fun applySilentMode(silent: Boolean) {
-        try {
-            val nm = requireContext().getSystemService(Context.NOTIFICATION_SERVICE)
-                    as NotificationManager
 
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                if (silent) {
-                    val minimalChannel = NotificationChannel(
-                        STEALTH_CHANNEL_ID,
-                        "Background Tasks",
-                        NotificationManager.IMPORTANCE_MIN
-                    ).apply {
-                        description = "Background processing"
-                        setShowBadge(false)
-                        enableVibration(false)
-                        setSound(null, null)
-                        lockscreenVisibility = android.app.Notification.VISIBILITY_SECRET
-                    }
-                    nm.createNotificationChannel(minimalChannel)
-
-                    // ✅ Cancel any currently showing download notifications
-                    // This clears visible notifications immediately
-                    cancelActiveDownloadNotifications(nm)
-
-                    Log.d(TAG, "Silent mode ON — minimal notification channel active")
-
-                } else {
-                    // ✅ Ensure normal channel exists with proper settings
-                    val normalChannel = NotificationChannel(
-                        DOWNLOAD_CHANNEL_ID,
-                        "Vault Downloads",
-                        NotificationManager.IMPORTANCE_LOW
-                    ).apply {
-                        description = "Shows download progress for vault media"
-                        setShowBadge(false)
-                        enableVibration(false)
-                        setSound(null, null)
-                    }
-                    nm.createNotificationChannel(normalChannel)
-
-                    Log.d(TAG, "Silent mode OFF — normal channel active")
-                }
-            }
-        } catch (e: Exception) {
-            Log.e(TAG, "applySilentMode error: ${e.message}", e)
-        }
-    }
 
     /**
      * ✅ NEW: Cancels any visible download notifications.
@@ -248,24 +228,32 @@ class settingsFragment : Fragment() {
 
     private fun confirmQuickLauncherEnable() {
         if (!isAdded) return
+        val dialogBinding = DialogQuickLaucherBinding.inflate(layoutInflater)
+        val dialog = AlertDialog.Builder(requireContext())
+            .setView(dialogBinding.root)
+            .create()
 
-        AlertDialog.Builder(requireContext())
-            .setTitle("Enable Quick Launcher?")
-            .setMessage(
-                "Quick Launcher adds a small on-screen bubble for faster vault access. " +
-                    "Android will ask for overlay permission before it can appear."
-            )
-            .setPositiveButton("Continue") { _, _ ->
-                prefs.isFloatingLauncherEnabled = true
-                checkOverlayPermission()
+        dialogBinding.continueButton.setOnClickListener {
+            prefs.isFloatingLauncherEnabled = true
+            checkOverlayPermission()
+            dialog.dismiss()
+        }
+
+        dialogBinding.cancelButton.setOnClickListener {
+            prefs.isFloatingLauncherEnabled = false
+            if (_binding != null) {
+                binding.switchQuickLauncher.isChecked = false
             }
-            .setNegativeButton("Cancel") { _, _ ->
-                prefs.isFloatingLauncherEnabled = false
-                if (_binding != null) {
-                    binding.switchQuickLauncher.isChecked = false
-                }
-            }
-            .show()
+            dialog.dismiss()
+        }
+
+        dialog.window?.setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
+        dialog.window?.setDimAmount(0.7f)
+        dialog.show()
+        dialog.window?.setFlags(
+            WindowManager.LayoutParams.FLAG_SECURE,
+            WindowManager.LayoutParams.FLAG_SECURE
+        )
     }
 
     private fun checkOverlayPermission() {

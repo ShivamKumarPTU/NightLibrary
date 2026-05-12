@@ -21,7 +21,7 @@ abstract class BaseActivity : AppCompatActivity(), SensorEventListener {
     private var initialized = false
     private var lastShakeTime = 0L
 
-    private val SHAKE_THRESHOLD = 12f
+    private val SHAKE_THRESHOLD = 10f
     private val SHAKE_COOLDOWN = 1000L
 
     override fun onResume() {

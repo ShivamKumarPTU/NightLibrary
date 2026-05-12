@@ -145,7 +145,7 @@ class ManagePassword : Fragment() {
             // Security prompt: include passwords or not?
             val db = DialogSharePasswordBinding.inflate(layoutInflater)
             val dialog = AlertDialog.Builder(requireContext()).setView(db.root).create()
-                db.passwordHideButton.setOnClickListener {
+            db.passwordHideButton.setOnClickListener {
                     sharePasswords(includePasswords = false)
                 }
               db.passwordShareButton.setOnClickListener {

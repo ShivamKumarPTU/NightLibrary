@@ -14,7 +14,7 @@
         android:orientation="vertical"
         android:padding="24dp">
 
-        <!-- Header -->
+        <!-- Header: Night Focus -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -31,18 +31,18 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginStart="12dp"
-                android:text="NightVault"
+                android:text="Night Focus"
                 android:textColor="@color/text_primary"
                 android:textSize="28sp"
                 android:textStyle="bold" />
         </LinearLayout>
 
-        <!-- Sub-header -->
+        <!-- Sub-header: Your evening companion -->
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginTop="4dp"
-            android:text="Secure private storage for your personal content"
+            android:text="Your evening companion"
             android:textColor="@color/text_secondary"
             android:textSize="16sp" />
 
@@ -51,7 +51,7 @@
             android:layout_width="match_parent"
             android:layout_height="32dp" />
 
-        <!-- Item 1: Secure Photos -->
+        <!-- Item 1: Deep Sleep -->
         <com.google.android.material.card.MaterialCardView style="@style/FocusCard">
 
             <LinearLayout style="@style/FocusCardContent">
@@ -68,16 +68,16 @@
 
                     <TextView
                         style="@style/FocusTitle"
-                        android:text="Secure Photos" />
+                        android:text="Deep Sleep" />
 
                     <TextView
                         style="@style/FocusSubtitle"
-                        android:text="Encrypted private image vault" />
+                        android:text="Peaceful night rest" />
                 </LinearLayout>
             </LinearLayout>
         </com.google.android.material.card.MaterialCardView>
 
-        <!-- Item 2: Private Videos -->
+        <!-- Item 2: Focus Mode -->
         <com.google.android.material.card.MaterialCardView style="@style/FocusCard">
 
             <LinearLayout style="@style/FocusCardContent">
@@ -94,16 +94,16 @@
 
                     <TextView
                         style="@style/FocusTitle"
-                        android:text="Private Videos" />
+                        android:text="Focus Mode" />
 
                     <TextView
                         style="@style/FocusSubtitle"
-                        android:text="Lock and play protected videos" />
+                        android:text="Enhanced concentration" />
                 </LinearLayout>
             </LinearLayout>
         </com.google.android.material.card.MaterialCardView>
 
-        <!-- Item 3: Discreet Access -->
+        <!-- Item 3: Night Reading -->
         <com.google.android.material.card.MaterialCardView
             android:id="@+id/nightReadingCard"
             style="@style/FocusCard">
@@ -122,16 +122,16 @@
 
                     <TextView
                         style="@style/FocusTitle"
-                        android:text="Discreet Access" />
+                        android:text="Night Reading" />
 
                     <TextView
                         style="@style/FocusSubtitle"
-                        android:text="Optional alternate vault entry" />
+                        android:text="Comfortable dark reader" />
                 </LinearLayout>
             </LinearLayout>
         </com.google.android.material.card.MaterialCardView>
 
-        <!-- Item 4: Private Audio -->
+        <!-- Item 4: Ambient Sounds -->
         <com.google.android.material.card.MaterialCardView style="@style/FocusCard">
 
             <LinearLayout style="@style/FocusCardContent">
@@ -148,16 +148,16 @@
 
                     <TextView
                         style="@style/FocusTitle"
-                        android:text="Private Audio" />
+                        android:text="Ambient Sounds" />
 
                     <TextView
                         style="@style/FocusSubtitle"
-                        android:text="Store music and voice files securely" />
+                        android:text="Soothing soundscapes" />
                 </LinearLayout>
             </LinearLayout>
         </com.google.android.material.card.MaterialCardView>
 
-        <!-- Item 5: Passwords and Contacts -->
+        <!-- Item 5: Guided Thoughts -->
         <com.google.android.material.card.MaterialCardView style="@style/FocusCard">
 
             <LinearLayout style="@style/FocusCardContent">
@@ -174,11 +174,11 @@
 
                     <TextView
                         style="@style/FocusTitle"
-                        android:text="Passwords and Contacts" />
+                        android:text="Guided Thoughts" />
 
                     <TextView
                         style="@style/FocusSubtitle"
-                        android:text="Protect your sensitive personal records" />
+                        android:text="Mindful meditation" />
                 </LinearLayout>
             </LinearLayout>
         </com.google.android.material.card.MaterialCardView>

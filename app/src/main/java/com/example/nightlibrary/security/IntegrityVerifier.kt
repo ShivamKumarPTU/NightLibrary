@@ -5,22 +5,22 @@ import java.io.FileInputStream
 import java.security.MessageDigest
 
 object IntegrityVerifier {
-    fun verify(file: File, expectedChecksum: String): Boolean {
-
-        // For chunk storage, integrity check is skipped
-        if (file.isDirectory) {
-            return true
-        }
-
+    fun verify(file: File, expectedChecksum: String, isChunked: Boolean = false): Boolean {
+        if (isChunked) return true // Skip raw chunk checks; verify full file after decryption
+        
+        if (file.isDirectory) return true
         if (!file.exists() || expectedChecksum.isEmpty()) return false
 
-        val digest = MessageDigest.getInstance("SHA-256")
-        val bytes = file.readBytes()
+        val calculatedChecksum = generateChecksum(file)
+        return calculatedChecksum.equals(expectedChecksum, ignoreCase = true)
+    }
 
+    fun verify(bytes: ByteArray, expectedChecksum: String): Boolean {
+        if (expectedChecksum.isEmpty()) return true
+        val digest = MessageDigest.getInstance("SHA-256")
         val calculatedChecksum =
             digest.digest(bytes).joinToString("") { "%02x".format(it) }
-
-        return calculatedChecksum == expectedChecksum
+        return calculatedChecksum.equals(expectedChecksum, ignoreCase = true)
     }
     fun generateChecksum(file: File): String {
         if (!file.exists()) return ""

@@ -1,5 +1,6 @@
 package com.example.nightlibrary.worker
 
+import com.example.nightlibrary.util.UserAgentManager
 import android.util.Log
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
@@ -34,26 +35,26 @@ object ParallelDownloader {
 
     private const val TAG = "ParallelDL"
 
-    // Adaptive based on CPU cores (most phones: 4-8 cores → 3-6 connections)
-    val CONNECTIONS = Runtime.getRuntime().availableProcessors().coerceIn(3, 6)
+    // Adaptive based on CPU cores (most phones: 4-8 cores → up to 12 connections)
+    val CONNECTIONS = Runtime.getRuntime().availableProcessors().coerceIn(4, 12)
 
-    private const val BUFFER_SIZE = 256 * 1024          // 256KB per connection
+    private const val BUFFER_SIZE = 1 * 1024 * 1024          // 1MB per connection — Fast extraction/write
     private const val MIN_PARALLEL_SIZE = 2 * 1024 * 1024L  // 2MB minimum for parallel
-    private const val SEGMENT_RETRY_COUNT = 3
-    private const val SEGMENT_RETRY_DELAY_MS = 1500L
+    private const val SEGMENT_RETRY_COUNT = 5
+    private const val SEGMENT_RETRY_DELAY_MS = 2000L
 
-    private const val USER_AGENT =
-        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 " +
-                "(KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"
+    // 🔥 Phase 5: Rotated User-Agent
+    private val USER_AGENT get() = UserAgentManager.getRandomUA()
 
     // OkHttp with connection pooling — reuses TCP sockets
     private val client = OkHttpClient.Builder()
-        .connectTimeout(15, TimeUnit.SECONDS)
-        .readTimeout(30, TimeUnit.SECONDS)
-        .writeTimeout(15, TimeUnit.SECONDS)
+        .connectTimeout(20, TimeUnit.SECONDS)
+        .readTimeout(60, TimeUnit.SECONDS)
+        .writeTimeout(20, TimeUnit.SECONDS)
         .followRedirects(true)
         .followSslRedirects(true)
-        .connectionPool(ConnectionPool(CONNECTIONS + 2, 5, TimeUnit.MINUTES))
+        .protocols(listOf(okhttp3.Protocol.HTTP_2, okhttp3.Protocol.HTTP_1_1))  // ✅ HTTP/2 multiplexing
+        .connectionPool(ConnectionPool(32, 5, TimeUnit.MINUTES))
         .build()
 
     // ═══════════════════════════════════════════════════════════════
@@ -134,6 +135,7 @@ object ParallelDownloader {
         resumeFromBytes: Long = 0L,
         totalSize: Long = -1L,
         supportsRange: Boolean = false,
+        connectionCount: Int = CONNECTIONS,
         onProgress: suspend (downloadedBytes: Long, totalBytes: Long) -> Unit
     ): Long = withContext(Dispatchers.IO) {
 
@@ -142,12 +144,13 @@ object ParallelDownloader {
                 resumeFromBytes == 0L
 
         if (canParallel) {
-            Log.d(TAG, "⚡ Parallel: $CONNECTIONS connections, " +
+            val effectiveConnections = connectionCount.coerceIn(2, 16)
+            Log.d(TAG, "⚡ Parallel: $effectiveConnections connections, " +
                     "${totalSize / (1024 * 1024)}MB")
 
             try {
                 parallelDownload(url, outputFile, referer, extraHeaders,
-                    totalSize, onProgress)
+                    totalSize, effectiveConnections, onProgress)
             } catch (e: Exception) {
                 // If parallel fails, fall back to single
                 Log.w(TAG, "Parallel failed, falling back to single: ${e.message}")
@@ -173,10 +176,11 @@ object ParallelDownloader {
         referer: String,
         extraHeaders: Map<String, String>,
         totalSize: Long,
+        connectionCount: Int,
         onProgress: suspend (Long, Long) -> Unit
     ): Long = coroutineScope {
 
-        val numSegments = CONNECTIONS
+        val numSegments = connectionCount
         val segmentSize = totalSize / numSegments
 
         // Pre-allocate output file
@@ -278,7 +282,7 @@ object ParallelDownloader {
                     RandomAccessFile(outputFile, "rw").use { raf ->
                         raf.seek(effectiveStart)
 
-                        body.byteStream().use { input ->
+                        body.byteStream().buffered(BUFFER_SIZE).use { input ->
                             val buffer = ByteArray(BUFFER_SIZE)
                             var position = effectiveStart
 
@@ -296,7 +300,10 @@ object ParallelDownloader {
                                 raf.write(buffer, 0, n)
                                 position += n
                                 bytesWrittenSoFar += n
-                                onBytesRead(n.toLong())   // ✅ Works now — suspend lambda
+                                onBytesRead(n.toLong())
+
+                                // 🔥 CRITICAL: Force yield to check for cancellation
+                                kotlinx.coroutines.yield()
                             }
                         }
                     }

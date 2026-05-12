@@ -48,10 +48,13 @@ class CameraChoiceBottomSheet : BottomSheetDialogFragment() {
         container: ViewGroup?,
         savedInstanceState: Bundle?
     ): View? {
+
         dialog?.window?.setFlags(
             WindowManager.LayoutParams.FLAG_SECURE,
             WindowManager.LayoutParams.FLAG_SECURE
         )
+
+
         return inflater.inflate(R.layout.dialog_camera_choice, container, false)
     }
 

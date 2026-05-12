@@ -25,10 +25,13 @@ Support for Password-Protected Sites: Some browsers within vault apps can handle
 ///   Search Bar in each chip to search for specific file
 ///   Contact should share as when we share contact on whatsapp or when we export contact from phone
 ///   Add  a Select All feature in ManageContact,ManagePassword,audio,image,video,pdf for share ,delete
-///
+///    Resume Support
 
 ********************************** My Learning ***********************************************
 
 // In activity If I am preventing it from taking screenshot
 then it don't means that dialog box appearing is also getting hide
 it's create another window on top of existing window
+
+***************
+scrollview in download from link.kt and create and confirm pin ,audio player ui dii,16kb alignment

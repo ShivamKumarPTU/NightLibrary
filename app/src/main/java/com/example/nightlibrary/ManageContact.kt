@@ -36,9 +36,9 @@ import com.example.nightlibrary.entity.MediaEntity
 import com.example.nightlibrary.viewmodel.VaultViewModel
 import com.google.android.material.bottomsheet.BottomSheetDialogFragment
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.combine
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 class ManageContact : Fragment() {
@@ -76,7 +76,10 @@ class ManageContact : Fragment() {
     private val contactPermissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
     ) { permissions ->
-        val readGranted = permissions[Manifest.permission.READ_CONTACTS] == true
+        val readGranted = permissions[Manifest.permission.READ_CONTACTS] == true ||
+                ContextCompat.checkSelfPermission(requireContext(), Manifest.permission.READ_CONTACTS) ==
+                PackageManager.PERMISSION_GRANTED
+
         if (readGranted) {
             // ✅ FIX: Use custom picker instead of system picker
             openCustomContactPicker()
@@ -85,9 +88,15 @@ class ManageContact : Fragment() {
                 Manifest.permission.READ_CONTACTS
             )
             if (!showRationale) {
-                showPermissionSettingsDialog(
-                    "Contacts permission is required to import contacts."
-                )
+                // Check again to see if they actually denied it or if it's already granted
+                if (ContextCompat.checkSelfPermission(requireContext(), Manifest.permission.READ_CONTACTS) ==
+                    PackageManager.PERMISSION_GRANTED) {
+                    openCustomContactPicker()
+                } else {
+                    showPermissionSettingsDialog(
+                        "Contacts permission is required to import contacts."
+                    )
+                }
             } else {
                 Toast.makeText(requireContext(), "Permission denied", Toast.LENGTH_SHORT)
                     .show()
@@ -134,17 +143,13 @@ class ManageContact : Fragment() {
 
     // Called by AddContactBottomSheet
     fun checkContactPermission() {
-        val permissions = arrayOf(Manifest.permission.READ_CONTACTS)
-        val missing = permissions.filter {
-            ContextCompat.checkSelfPermission(requireContext(), it) !=
-                    PackageManager.PERMISSION_GRANTED
-        }
-
-        if (missing.isEmpty()) {
+        if (ContextCompat.checkSelfPermission(requireContext(), Manifest.permission.READ_CONTACTS) ==
+            PackageManager.PERMISSION_GRANTED
+        ) {
             // ✅ FIX: Use custom picker instead of system picker
             openCustomContactPicker()
         } else {
-            contactPermissionLauncher.launch(missing.toTypedArray())
+            contactPermissionLauncher.launch(arrayOf(Manifest.permission.READ_CONTACTS))
         }
     }
 
@@ -154,9 +159,9 @@ class ManageContact : Fragment() {
         val intent = Intent(Intent.ACTION_PICK, ContactsContract.CommonDataKinds.Phone.CONTENT_URI).apply {
             putExtra(Intent.EXTRA_ALLOW_MULTIPLE, true)
             // Some devices need this for multi-select in ACTION_PICK
-            putExtra("com.google.android.gms.contacts.EXTRA_SELECTION_MAX", 100) 
+            putExtra("com.google.android.gms.contacts.EXTRA_SELECTION_MAX", 100)
         }
-        
+
         try {
             contactPickerLauncher.launch(intent)
         } catch (e: Exception) {
@@ -233,6 +238,26 @@ class ManageContact : Fragment() {
         setupSelectionActions()
         requireActivity().onBackPressedDispatcher.addCallback(viewLifecycleOwner, backPressCallback)
         observeData()
+    }
+    override fun onResume() {
+        super.onResume()
+
+        // ✅ FIX: Check if returning from a call — bypass auth
+        val prefs = requireContext().getSharedPreferences(PREF_NAME, 0)
+        val callStartedAt = prefs.getLong("call_started_at", 0L)
+
+        if (callStartedAt > 0) {
+            val elapsed = System.currentTimeMillis() - callStartedAt
+
+            // If call was initiated within the last 2 hours, don't re-auth
+            if (elapsed < 2 * 60 * 60 * 1000L) {
+                (requireActivity().application as NightLibraryApp)
+                    .isIgnoringNextLock = true
+            }
+
+            // Clear the flag
+            prefs.edit().remove("call_started_at").apply()
+        }
     }
     override fun onDestroyView() {
         viewModel.clearContactSelection()
@@ -352,13 +377,38 @@ class ManageContact : Fragment() {
                 if (position != RecyclerView.NO_POSITION) {
                     val contact = adapter.currentList[position]
 
-                    val intent = Intent(
-                        Intent.ACTION_DIAL,
-                        android.net.Uri.parse("tel:${contact.phone}")
-                    )
-                    (requireActivity().application as NightLibraryApp)
-                        .isIgnoringNextLock = true
-                    startActivity(intent)
+                    if (ContextCompat.checkSelfPermission(
+                            requireContext(), Manifest.permission.CALL_PHONE
+                        ) == PackageManager.PERMISSION_GRANTED
+                    ) {
+                        // ✅ FIX: Persist ignore flag for call return
+                        saveCallReturnFlag()
+
+                        val intent = Intent(
+                            Intent.ACTION_CALL,
+                            android.net.Uri.parse("tel:${contact.phone}")
+                        )
+                        viewModel.prepareForExternalIntent()
+                        (requireActivity().application as NightLibraryApp)
+                            .isIgnoringNextLock = true
+                        startActivity(intent)
+
+                        // Clean call log
+                        viewLifecycleOwner.lifecycleScope.launch {
+                            repeat(5) {
+                                delay(2000)
+                                deleteCallLogByNumber(contact.phone)
+                            }
+                        }
+                    } else {
+                        val intent = Intent(
+                            Intent.ACTION_DIAL,
+                            android.net.Uri.parse("tel:${contact.phone}")
+                        )
+                        (requireActivity().application as NightLibraryApp)
+                            .isIgnoringNextLock = true
+                        startActivity(intent)
+                    }
                     adapter.notifyItemChanged(position)
                 }
             }
@@ -368,6 +418,31 @@ class ManageContact : Fragment() {
         // ✅ NEW: Show swipe hint on first visits
         showSwipeHintIfNeeded()
     }
+    private fun deleteCallLogByNumber(number: String) {
+        if (ContextCompat.checkSelfPermission(requireContext(), Manifest.permission.WRITE_CALL_LOG)
+            != PackageManager.PERMISSION_GRANTED) return
+
+        try {
+            val contentResolver = requireContext().contentResolver
+            val uri = android.provider.CallLog.Calls.CONTENT_URI
+
+            // Normalize number for better matching (remove spaces, dashes)
+            val normalizedNumber = number.replace(Regex("[^0-9+]"), "")
+
+            // Delete entries for this specific number from the last 5 minutes to be safe
+            val fiveMinutesAgo = System.currentTimeMillis() - (5 * 60 * 1000)
+
+            val deleted = contentResolver.delete(
+                uri,
+                "(${android.provider.CallLog.Calls.NUMBER} = ? OR ${android.provider.CallLog.Calls.NUMBER} = ?) AND ${android.provider.CallLog.Calls.DATE} > ?",
+                arrayOf(number, normalizedNumber, fiveMinutesAgo.toString())
+            )
+            if (deleted > 0) Log.d(TAG, "Deleted $deleted call log entries for $number")
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to delete call log: ${e.message}")
+        }
+    }
+
     // ═══════════════════════════════════════════════════════════════
     // FAB
     // ═══════════════════════════════════════════════════════════════
@@ -545,7 +620,7 @@ class ManageContact : Fragment() {
                 if (_binding != null && isAdded) {
                     com.google.android.material.snackbar.Snackbar.make(
                         binding.root,
-                        "Swipe right on any contact to open your phone app",
+                        "👉 Swipe right on any contact to call",
                         com.google.android.material.snackbar.Snackbar.LENGTH_LONG
                     ).setAction("Got it") { }
                         .setActionTextColor(
@@ -560,6 +635,13 @@ class ManageContact : Fragment() {
 // ═══════════════════════════════════════════════════════════════
 // ✅ FIX: Persist call return flag (survives process death)
 // ═══════════════════════════════════════════════════════════════
+
+    private fun saveCallReturnFlag() {
+        requireContext().getSharedPreferences(PREF_NAME, 0)
+            .edit()
+            .putLong("call_started_at", System.currentTimeMillis())
+            .apply()
+    }
 
 // ═══════════════════════════════════════════════════════════════
 // ✅ NEW: Custom contact picker (multi-select)

@@ -17,6 +17,7 @@
 package com.example.nightlibrary
 
 import android.os.Bundle
+import dagger.hilt.android.AndroidEntryPoint
 import android.util.Log
 import android.view.View
 import androidx.activity.enableEdgeToEdge
@@ -41,6 +42,7 @@ import com.example.nightlibrary.worker.PreviewPlayerManager
 import com.google.android.material.bottomnavigation.BottomNavigationView
 import kotlinx.coroutines.launch
 
+@AndroidEntryPoint
 class MainActivity : BaseActivity() {
 
     companion object {
@@ -62,8 +64,14 @@ class MainActivity : BaseActivity() {
         Log.d(TAG, "onCreate")
         setContentView(binding.root)
 
-        SecureScreenManager.enable(this)
-        lifecycleScope.launch { MediaScanner.scanVault(this@MainActivity) }
+       SecureScreenManager.enable(this)
+        
+        // 🔥 10/10 Performance: Delay scanner to prevent startup "Davey" lag
+        lifecycleScope.launch {
+            kotlinx.coroutines.delay(3000)
+            MediaScanner.scanVault(this@MainActivity) 
+        }
+
         application.registerComponentCallbacks(PreviewPlayerManager)
 
         enableEdgeToEdge()
@@ -137,20 +145,34 @@ class MainActivity : BaseActivity() {
 
     override fun onStart() {
         super.onStart()
-        Log.d(TAG, "onStart → stoppedForBackground=$stoppedForBackground")
+        val app = application as NightLibraryApp
+        Log.d(TAG, "onStart → stoppedForBackground=$stoppedForBackground app.needsAuth=${app.needsAuth}")
         
         // Reset the external intent guard
-        val app = application as NightLibraryApp
         val factory = app.container.vaultViewModelFactory
         val viewModel = ViewModelProvider(this, factory)[VaultViewModel::class.java]
         viewModel.resetExternalIntentState()
         app.isIgnoringNextLock = false
 
-        if (stoppedForBackground && !VaultSessionManager.isUnlocked()) {
+        val fromFloating = intent.getBooleanExtra("from_floating", false)
+
+        if ((stoppedForBackground || app.needsAuth || fromFloating) && !VaultSessionManager.isUnlocked()) {
             stoppedForBackground = false
+            app.needsAuth = false
+            // Clear the extra so it doesn't trigger again on rotation/etc if not needed
+            intent.removeExtra("from_floating") 
             openAuthLayer(AuthMode.FULL_LOGIN)
         } else {
             stoppedForBackground = false
+            app.needsAuth = false
+        }
+    }
+
+    override fun onNewIntent(intent: android.content.Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        if (intent.getBooleanExtra("from_floating", false)) {
+            (application as NightLibraryApp).needsAuth = true
         }
     }
 

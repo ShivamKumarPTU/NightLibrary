@@ -3,6 +3,7 @@ package com.example.nightlibrary.core.security
 import android.util.Base64
 import android.util.Log
 import com.example.nightlibrary.security.VaultCryptoEngine
+import com.example.nightlibrary.security.ChunkIndexReader
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope

@@ -5,9 +5,10 @@ import androidx.media3.common.C
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.datasource.BaseDataSource
 import androidx.media3.datasource.DataSpec
-import com.example.nightlibrary.core.security.ChunkIndexReader
+import com.example.nightlibrary.security.ChunkIndexReader
 import com.example.nightlibrary.security.VaultCryptoEngine
 import java.io.File
+import java.io.IOException
 import java.io.RandomAccessFile
 import javax.crypto.Cipher
 import javax.crypto.spec.IvParameterSpec
@@ -33,7 +34,7 @@ class VaultChunkDataSource(
         transferInitializing(dataSpec)
 
         val reader = ChunkIndexReader()
-        index = reader.read(vaultFolder)
+        index = reader.read(vaultFolder) ?: throw IOException("Invalid or missing index")
 
         filePointer = dataSpec.position
         bytesRemaining = index.totalFileSize - filePointer

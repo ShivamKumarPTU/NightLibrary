@@ -12,10 +12,12 @@ import android.webkit.WebSettings
 import android.webkit.WebView
 import android.webkit.WebViewClient
 import com.example.nightlibrary.model.FormatInfo
+import com.example.nightlibrary.worker.ParallelDownloader.CONNECTIONS
 import com.yausername.youtubedl_android.YoutubeDL
 import com.yausername.youtubedl_android.YoutubeDLRequest
 import kotlinx.coroutines.*
 import kotlinx.coroutines.sync.Semaphore
+import okhttp3.ConnectionPool
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import org.json.JSONArray
@@ -74,10 +76,10 @@ object MediaExtractor {
 
     // ─── Faster OkHttpClient: shorter timeouts + connection reuse ───
     private val http = OkHttpClient.Builder()
-        .connectTimeout(6, TimeUnit.SECONDS)     // was 12
-        .readTimeout(8, TimeUnit.SECONDS)        // was 12
-        .followRedirects(true)
-        .connectionPool(okhttp3.ConnectionPool(5, 2, TimeUnit.MINUTES))   // reuse sockets
+        .connectTimeout(15, TimeUnit.SECONDS)
+        .readTimeout(30, TimeUnit.SECONDS)
+        .protocols(listOf(okhttp3.Protocol.HTTP_2, okhttp3.Protocol.HTTP_1_1))  // ✅ HTTP/2 multiplexing
+        .connectionPool(ConnectionPool(CONNECTIONS + 4, 5, TimeUnit.MINUTES))
         .build()
 
     const val USER_AGENT =
@@ -366,8 +368,9 @@ object MediaExtractor {
         // ── Strategy C: yt-dlp — most reliable for CDN/auth-gated sites (2–10s) ─
         val ytJob = launch(Dispatchers.IO) {
             try {
+                val maxHeight = try { com.example.nightlibrary.util.DeviceCapabilityUtil.getSafeDownloadHeight() } catch (_: Exception) { 1080 }
                 deliver(withTimeoutOrNull(10_000L) {
-                    tryYtDlp(url, progressListener)?.copy(useYtDlp = preferYtDlp)?.also { autoCacheHls(it) }
+                    tryYtDlp(url, progressListener, maxHeight)?.copy(useYtDlp = preferYtDlp)?.also { autoCacheHls(it) }
                 })
             } catch (e: CancellationException) { deliver(null); throw e }
             catch (_: Exception)              { deliver(null) }
@@ -387,9 +390,26 @@ object MediaExtractor {
 
     private fun tryYtDlp(
         url: String,
-        progressListener: ((Double) -> Unit)? = null
+        progressListener: ((Double) -> Unit)? = null,
+        maxHeight: Int = try { com.example.nightlibrary.util.DeviceCapabilityUtil.getSafeDownloadHeight() } catch (_: Exception) { 1080 }
     ): VideoInfo? {
         return try {
+            if (!com.example.nightlibrary.NightLibraryApp.isYtDlpReady()) {
+                if (com.example.nightlibrary.NightLibraryApp.isInitInProgress()) {
+                    Log.d(TAG, "⏳ Waiting for yt-dlp init...")
+                    val ready = kotlinx.coroutines.runBlocking {
+                        com.example.nightlibrary.NightLibraryApp.waitForInit(8_000L)
+                    }
+                    if (!ready) {
+                        Log.w(TAG, "⚠️ yt-dlp init timeout — skipping this strategy")
+                        return null
+                    }
+                    Log.d(TAG, "✅ yt-dlp ready — proceeding")
+                } else {
+                    Log.w(TAG, "⚠️ yt-dlp not initialized — skipping this strategy")
+                    return null
+                }
+            }
             val req = YoutubeDLRequest(url).apply {
                 addOption("--dump-json")
                 addOption("--no-playlist")
@@ -407,7 +427,7 @@ object MediaExtractor {
                 // YouTube: Android client skips JS challenge and age-gate — measurably faster
                 val h = hostOf(url)
                 if (h.contains("youtube") || h.contains("youtu.be")) {
-                    addOption("--extractor-args", "youtube:player_client=android,web")
+                    addOption("--extractor-args", "youtube:player_client=ios,android,web")
                 }
             }
             val out = YoutubeDL.getInstance().execute(req) { pct, _, _ ->
@@ -427,13 +447,12 @@ object MediaExtractor {
             // Parse all formats using FormatInfo for accurate categorization
             val allFormats = FormatInfo.parseAll(root)
 
-            // Find best muxed format (has video + audio)
-            val deviceMaxHeight = com.example.nightlibrary.util.DeviceCapabilityUtil.getSafeDownloadHeight()
+            // Find best muxed format (has video + audio) - AVOID AV1
             val bestMuxed = allFormats
-                .filter { it.category == FormatInfo.Category.MUXED && it.height <= deviceMaxHeight }
+                .filter { it.category == FormatInfo.Category.MUXED && it.height <= maxHeight && it.vcodec != "av1" }
                 .maxByOrNull { it.height * 1000 + it.tbr.toInt() }
                 ?: allFormats
-                    .filter { it.hasVideo }
+                    .filter { it.hasVideo && it.vcodec != "av1" }
                     .maxByOrNull { it.height * 1000 + it.tbr.toInt() }
 
             val bestUrl = bestMuxed?.url
@@ -476,17 +495,17 @@ object MediaExtractor {
     // parseVideoInfo — used by DownloadFormLink to extract quick info
     // ═══════════════════════════════════════════════════════════════
 
-    fun parseVideoInfo(json: String): VideoInfo? {
+    fun parseVideoInfo(json: String, maxHeight: Int = 1080): VideoInfo? {
         return try {
             val root = JSONObject(json)
             val allFormats = FormatInfo.parseAll(root)
             val duration = root.optLong("duration", 0L)
 
-            val deviceMaxHeight = com.example.nightlibrary.util.DeviceCapabilityUtil.getSafeDownloadHeight()
+            // ✅ FIX: Filter out AV1 formats to ensure thumbnail and seekbar compatibility
             val bestMuxed = allFormats
-                .filter { it.category == FormatInfo.Category.MUXED && it.height <= deviceMaxHeight }
+                .filter { it.category == FormatInfo.Category.MUXED && it.height <= maxHeight && it.vcodec != "av1" }
                 .maxByOrNull { it.height * 1000 + it.tbr.toInt() }
-                ?: allFormats.filter { it.hasVideo }.maxByOrNull { it.height * 1000 + it.tbr.toInt() }
+                ?: allFormats.filter { it.hasVideo && it.vcodec != "av1" }.maxByOrNull { it.height * 1000 + it.tbr.toInt() }
 
             val bestUrl = bestMuxed?.url
                 ?: root.optString("url", "").ifEmpty { null }
@@ -574,9 +593,20 @@ object MediaExtractor {
                     if (!done.isCompleted) { done.complete(null); cleanup() }
                 }, 10_000L)    // was 18_000L
                 wv.webViewClient = object : WebViewClient() {
+                    @Suppress("OVERRIDE_DEPRECATION")
+                    override fun shouldInterceptRequest(v: WebView?, u: String?): WebResourceResponse? {
+                        return null
+                    }
+
                     override fun shouldInterceptRequest(v: WebView?, r: WebResourceRequest?): WebResourceResponse? {
                         val u = r?.url?.toString() ?: return null
-                        if (!done.isCompleted && looksLikeVideoStream(u)) {
+                        
+                        if (isIrrelevantAd(u)) {
+                            Log.v(TAG, "🚫 Blocked ad URL: ${u.take(60)}...")
+                            return null
+                        }
+
+                        if (!done.isCompleted && looksLikeVideoStream(u, pageUrl)) {
                             val h = buildMap {
                                 r.requestHeaders?.forEach { (k, v2) -> put(k, v2) }
                                 putIfAbsent("User-Agent", USER_AGENT)
@@ -591,8 +621,14 @@ object MediaExtractor {
                         }
                         return null
                     }
+                    @Suppress("OVERRIDE_DEPRECATION")
                     override fun onReceivedError(v: WebView?, c: Int, d: String?, u: String?) {
                         if (u == pageUrl && !done.isCompleted) { done.complete(null); cleanup() }
+                    }
+
+                    @Suppress("OVERRIDE_DEPRECATION")
+                    override fun shouldOverrideUrlLoading(v: WebView?, u: String?): Boolean {
+                        return false
                     }
                 }
                 wv.loadUrl(pageUrl)
@@ -601,17 +637,69 @@ object MediaExtractor {
         return try { done.await() } finally { cleanup() }
     }
 
-    private fun looksLikeVideoStream(u: String): Boolean {
+    private fun looksLikeVideoStream(u: String, pageUrl: String): Boolean {
         val l = u.lowercase()
+        val videoHost = hostOf(u)
+        val pageHost = hostOf(pageUrl)
+
+        if (isIrrelevantAd(u)) return false
+
         if (l.endsWith(".js") || l.endsWith(".css") || l.endsWith(".png") || l.endsWith(".jpg") ||
             l.endsWith(".gif") || l.endsWith(".svg") || l.endsWith(".woff") || l.endsWith(".woff2") ||
             l.endsWith(".ttf") || l.contains("analytics") || l.contains("tracking") ||
             l.contains("googlesyndication") || l.contains("doubleclick") ||
-            l.contains("adserver") || l.contains("facebook.com/tr")
+            l.contains("adserver") || l.contains("facebook.com/tr") ||
+            l.contains("pixel") || l.contains("/ads/") || l.contains("adskeeper") ||
+            l.contains("taboola") || l.contains("outbrain") || l.contains("popads")
         ) return false
-        return isM3U8(u) || (l.contains(".mp4") && !l.contains(".mp4.js")) || l.contains(".webm") ||
-                l.contains("videoplayback") || l.contains("/hls/") || l.contains("get_file") ||
+        
+        // Stricter video matching
+        val isVideo = isM3U8(u) || (l.contains(".mp4") && !l.contains(".mp4.js")) || 
+                l.contains(".webm") || l.contains("videoplayback") || 
+                l.contains("/hls/") || l.contains("get_file") ||
                 (l.contains("/cdn") && l.contains("mp4")) || (l.contains("video") && l.contains("cdn"))
+
+        if (!isVideo) return false
+
+        // Problem 4: Host-matching logic to filter out ad-videos on the same page
+        if (pageHost.isNotEmpty()) {
+            if (pageHost.contains("xhamster") && !videoHost.contains("xhcdn.com") && !videoHost.contains("xhamster")) {
+                return false
+            }
+            if ((pageHost.contains("youtube.com") || pageHost.contains("youtu.be")) && 
+                !videoHost.contains("googlevideo.com") && !videoHost.contains("youtube.com")) {
+                return false
+            }
+            if (pageHost.contains("instagram.com") && !videoHost.contains("cdninstagram.com") && !videoHost.contains("instagram.com")) {
+                return false
+            }
+        }
+
+        // Avoid short fragments or low-quality ad segments
+        if (l.contains("ad_") || l.contains("_ad") || l.contains("segment") || l.contains("/frag/")) {
+            Log.v(TAG, "⚠️ Potential ad segment skipped: ${u.take(60)}")
+            return false
+        }
+
+        // ❌ AVOID AV1: Most Android devices fail to generate thumbnails for AV1
+        if (l.contains(".av1.")) {
+            Log.v(TAG, "❌ Skipping AV1 stream: ${u.take(60)}")
+            return false
+        }
+
+        return true
+    }
+
+    private fun isIrrelevantAd(u: String): Boolean {
+        val l = u.lowercase()
+        val adDomains = listOf(
+            "doubleclick.net", "googlesyndication.com", "adnxs.com", "mads.amazon.com",
+            "taboola.com", "outbrain.com", "mgid.com", "popads.net", "propellerads.com",
+            "exoclick.com", "juicyads.com", "ero-advertising.com", "trafficjunky.com",
+            "realsrv.com", "yads.io", "openx.net", "ad-system.com", "mobicow.com",
+            "syndication.exoclick.com", "syndication.realsrv.com"
+        )
+        return adDomains.any { l.contains(it) } || l.contains("/ads/") || l.contains("ad-system") || l.contains("pixel")
     }
 
     private fun siteSpecificScrape(html: String, pageUrl: String, host: String): VideoInfo? {
@@ -619,12 +707,19 @@ object MediaExtractor {
     }
 
     private fun genericScrape(html: String, pageUrl: String): VideoInfo? {
-        val m3u8 = Regex("""['"](\bhttps?://[^'"]+\.m3u8[^'"]*)['"]""").find(html)?.groupValues?.get(1)?.replace("\\/", "/")
+        val m3u8 = Regex("""['"](\bhttps?://[^'"]+\.m3u8[^'"]*)['"]""").findAll(html)
+            .map { it.groupValues[1].replace("\\/", "/") }
+            .firstOrNull { !it.contains(".av1.") }
+            
         if (!m3u8.isNullOrBlank()) {
             val info = VideoInfo(resolveUrl(m3u8, pageUrl), pageUrl, mapOf("Referer" to pageUrl), isHls = true)
             autoCacheHls(info); return info
         }
-        val mp4 = Regex("""['"](\bhttps?://[^'"]+\.mp4(?:[?#][^'"]*)?)['"]""").find(html)?.groupValues?.get(1)?.replace("\\/", "/")
+        
+        val mp4 = Regex("""['"](\bhttps?://[^'"]+\.mp4(?:[?#][^'"]*)?)['"]""").findAll(html)
+            .map { it.groupValues[1].replace("\\/", "/") }
+            .firstOrNull { !it.contains(".av1.") }
+
         if (!mp4.isNullOrBlank()) return VideoInfo(resolveUrl(mp4, pageUrl), pageUrl, mapOf("Referer" to pageUrl))
         val src = Regex("""<(?:video|source)[^>]+src=['"](\bhttps?://[^'"]+)['"]""").find(html)?.groupValues?.get(1)
         if (!src.isNullOrBlank()) { val info = VideoInfo(src, pageUrl, mapOf("Referer" to pageUrl), isHls = isM3U8(src)); autoCacheHls(info); return info }
@@ -650,13 +745,45 @@ object MediaExtractor {
             .header("Referer", url).build()).execute().use { if (it.isSuccessful) it.body?.string() else null }
     } catch (_: Exception) { null }
 
-    fun isM3U8(url: String): Boolean { val l = url.lowercase(); return l.contains(".m3u8") || (l.contains("m3u8") && l.contains("playlist")) }
-    private fun hostOf(url: String) = try { android.net.Uri.parse(url).host?.lowercase() ?: "" } catch (_: Exception) { "" }
-    private fun originOf(url: String) = try { val u = android.net.Uri.parse(url); "${u.scheme}://${u.host}" } catch (_: Exception) { url }
-    private fun resolveUrl(path: String, base: String) = when {
-        path.startsWith("http") -> path; path.startsWith("//") -> "https:$path"
-        path.startsWith("/") -> { val u = android.net.Uri.parse(base); "${u.scheme}://${u.host}$path" }
-        else -> { val slash = base.lastIndexOf('/'); if (slash >= 0) base.substring(0, slash + 1) + path else path }
+    fun isM3U8(url: String): Boolean {
+        val l = url.lowercase()
+        return l.contains(".m3u8") || (l.contains("m3u8") && l.contains("playlist"))
+    }
+
+    private fun hostOf(url: String): String {
+        return try {
+            val noProtocol = url.substringAfter("://")
+            val hostPort = noProtocol.substringBefore("/")
+            hostPort.substringBefore(":").lowercase()
+        } catch (_: Exception) {
+            ""
+        }
+    }
+
+    private fun originOf(url: String): String {
+        return try {
+            val protocol = url.substringBefore("://")
+            val noProtocol = url.substringAfter("://")
+            val hostPort = noProtocol.substringBefore("/")
+            "$protocol://$hostPort"
+        } catch (_: Exception) {
+            url
+        }
+    }
+
+    private fun resolveUrl(path: String, base: String): String {
+        return when {
+            path.startsWith("http") -> path
+            path.startsWith("//") -> "https:$path"
+            path.startsWith("/") -> {
+                val origin = originOf(base)
+                "$origin$path"
+            }
+            else -> {
+                val slash = base.lastIndexOf('/')
+                if (slash >= 0) base.substring(0, slash + 1) + path else path
+            }
+        }
     }
     private fun normalizeUrl(url: String): String = url
     private fun appCtx(): Context? = try { YoutubeDL.getInstance().javaClass.getDeclaredField("appContext").also { it.isAccessible = true }.get(YoutubeDL.getInstance()) as? Context } catch (_: Exception) { null }

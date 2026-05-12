@@ -25,12 +25,12 @@ import kotlin.coroutines.coroutineContext
 object HlsDownloader {
 
     private const val TAG = "HlsDownloader"
-    private const val BUFFER_SIZE = 128 * 1024
-    private const val CONNECT_TIMEOUT = 20_000
-    private const val READ_TIMEOUT = 60_000
-    private const val MAX_REDIRECTS = 5
-    private const val MAX_PARALLEL = 4
-    private const val MAX_SEGMENT_RETRIES = 3
+    private const val BUFFER_SIZE = 1024 * 1024
+    private const val CONNECT_TIMEOUT = 30_000
+    private const val READ_TIMEOUT = 90_000
+    private const val MAX_REDIRECTS = 7
+    private const val MAX_PARALLEL = 12
+    private const val MAX_SEGMENT_RETRIES = 5
     private const val UA =
         "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 " +
                 "(KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"

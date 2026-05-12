@@ -142,6 +142,14 @@ class MediaRepository(private val dao: MediaDao) {
     fun getInProgressCount(): Flow<Int> = dao.getInProgressCount()
 
     // ═══════════════════════════════════════════════════════════════
+    // 🔒 PRIVATE QUERIES
+    // ═══════════════════════════════════════════════════════════════
+
+    fun getPrivateCompleted(): Flow<List<MediaEntity>> = dao.getPrivateCompleted()
+
+    fun getPrivateInProgress(): Flow<List<MediaEntity>> = dao.getPrivateInProgress()
+
+    // ═══════════════════════════════════════════════════════════════
     // ✅ PROGRESS UPDATES
     // ═══════════════════════════════════════════════════════════════
 

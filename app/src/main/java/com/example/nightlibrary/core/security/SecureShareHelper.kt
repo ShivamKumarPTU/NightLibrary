@@ -11,9 +11,12 @@ import androidx.lifecycle.LifecycleCoroutineScope
 import com.example.nightlibrary.databinding.DialogShareProgressBinding
 import com.example.nightlibrary.entity.MediaEntity
 import com.example.nightlibrary.security.VaultCryptoEngine
+import com.example.nightlibrary.security.ChunkIndexReader
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -165,6 +168,9 @@ class SecureShareHelper(private val context: Context) {
         }
     }
 
+    /**
+     * ✅ UPDATED: Parallel decryption + optional ZIP strategy.
+     */
     fun shareMultiple(
         mediaList: List<MediaEntity>,
         lifecycleScope: LifecycleCoroutineScope,
@@ -190,42 +196,60 @@ class SecureShareHelper(private val context: Context) {
             onComplete()
         }
 
+        // ✅ Use limited parallelism to avoid overwhelming disk I/O
+        val parallelDispatcher = Dispatchers.IO.limitedParallelism(3)
+
         shareJob = lifecycleScope.launch {
             try {
-                val uris = mutableListOf<android.net.Uri>()
+                val perFilePct = 100.0 / mediaList.size
+                val fileProgressArray = IntArray(mediaList.size) { 0 }
 
-                for ((index, media) in mediaList.withIndex()) {
-                    ensureActive()
+                // ✅ Decrypt ALL files in parallel instead of sequentially
+                val deferred = mediaList.mapIndexed { index, media ->
+                    async(parallelDispatcher) {
+                        ensureActive()
 
-                    val tempFile = tempFiles[index]
-                    if (tempFile.exists()) tempFile.delete()
+                        val tempFile = tempFiles[index]
+                        if (tempFile.exists()) tempFile.delete()
 
-                    val vaultFolder = resolveVaultFolder(media)
+                        val vaultFolder = resolveVaultFolder(media)
 
-                    withContext(Dispatchers.IO) {
                         decryptToFile(vaultFolder, tempFile) { pct ->
-                            val overallPct = ((index * 100 + pct) / mediaList.size)
-                                .coerceIn(0, 99)
-                            launch(Dispatchers.Main) {
-                                dialogBinding.shareProgressBar.progress = overallPct
-                                dialogBinding.tvSharePercentage.text = "$overallPct%"
+                            fileProgressArray[index] = pct
+                            val overall = fileProgressArray.indices.sumOf { i ->
+                                (fileProgressArray[i] * perFilePct / 100.0).toInt()
+                            }.coerceIn(0, 99)
+
+                            withContext(Dispatchers.Main) {
+                                dialogBinding.shareProgressBar.progress = overall
+                                dialogBinding.tvSharePercentage.text = "$overall%"
                                 dialogBinding.tvShareStatus.text =
-                                    "File ${index + 1}/${mediaList.size} — $pct%"
+                                    "Decrypting ${index + 1}/${mediaList.size}… $pct%"
                             }
                         }
-                    }
 
-                    verifyFile(tempFile)
-                    uris.add(getShareUri(tempFile))
+                        verifyFile(tempFile)
+                        tempFile
+                    }
                 }
+
+                val decryptedFiles = deferred.awaitAll()
+                val uris = decryptedFiles.map { getShareUri(it) }
 
                 val sendIntent = Intent(Intent.ACTION_SEND_MULTIPLE).apply {
                     type = "*/*"
-                    putParcelableArrayListExtra(Intent.EXTRA_STREAM, ArrayList(uris))
+                    putParcelableArrayListExtra(
+                        Intent.EXTRA_STREAM,
+                        ArrayList(uris)
+                    )
                     addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
                 }
 
                 withContext(Dispatchers.Main) {
+                    dialogBinding.shareProgressBar.progress = 100
+                    dialogBinding.tvSharePercentage.text = "100%"
+                    dialogBinding.tvShareStatus.text = "Ready!"
+
                     dialog.dismiss()
                     uris.forEach { uri -> grantUriPermissions(sendIntent, uri) }
                     context.startActivity(
@@ -346,26 +370,34 @@ class SecureShareHelper(private val context: Context) {
         outFile: File,
         onProgress: suspend (Int) -> Unit
     ) {
+        val startTime = System.currentTimeMillis()
+
         // Try FastVaultDecryptor first (parallel, envelope-aware)
         try {
             FastVaultDecryptor.decryptToFile(vaultFolder, outFile, onProgress)
+            val elapsed = System.currentTimeMillis() - startTime
+            Log.d(TAG, "✅ FastVaultDecryptor: ${outFile.length()} bytes in ${elapsed}ms")
             return
         } catch (e: Exception) {
-            Log.w(TAG, "FastVaultDecryptor failed, falling back to sequential: ${e.message}")
+            Log.w(TAG, "⚠️ FastVaultDecryptor FAILED after " +
+                    "${System.currentTimeMillis() - startTime}ms: ${e.message}")
             // Clean up partial output
             if (outFile.exists()) outFile.delete()
         }
 
         // Sequential fallback (also envelope-aware)
+        val fallbackStart = System.currentTimeMillis()
         val crypto = VaultCryptoEngine()
 
         val singleFile = File(vaultFolder, "full_image.enc")
         if (singleFile.exists()) {
             decryptSingleFile(singleFile, outFile, crypto, onProgress)
-            return
+        } else {
+            decryptChunked(vaultFolder, outFile, crypto, onProgress)
         }
 
-        decryptChunked(vaultFolder, outFile, crypto, onProgress)
+        val elapsed = System.currentTimeMillis() - fallbackStart
+        Log.d(TAG, "✅ Sequential fallback: ${outFile.length()} bytes in ${elapsed}ms")
     }
 
     private suspend fun decryptSingleFile(

@@ -210,7 +210,7 @@
     </fragment>
     <fragment
         android:id="@+id/settingsFragment"
-        android:name="com.example.nightlibrary.settingsFragment"
+        android:name="com.example.nightlibrary.SettingsFragment"
         android:label="fragment_settings"
         tools:layout="@layout/fragment_settings" >
         <action

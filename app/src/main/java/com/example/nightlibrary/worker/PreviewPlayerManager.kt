@@ -1,3 +1,5 @@
+@file:Suppress("DEPRECATION")
+
 package com.example.nightlibrary.worker
 
 import android.content.ComponentCallbacks2
@@ -87,6 +89,7 @@ object PreviewPlayerManager : ComponentCallbacks2 {
 
     override fun onConfigurationChanged(newConfig: Configuration) {}
 
+    @Deprecated("Deprecated in Java")
     override fun onLowMemory() {
 
         Log.d(TAG, "System low memory triggered")

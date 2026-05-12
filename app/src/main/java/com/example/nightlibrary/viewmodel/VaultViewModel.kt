@@ -15,7 +15,10 @@ import androidx.paging.cachedIn
 import androidx.work.WorkInfo
 import androidx.work.WorkManager
 import com.example.nightlibrary.NightLibraryApp
+import com.example.nightlibrary.core.security.CachingFileProvider
+import com.example.nightlibrary.core.security.SecureShareHelper
 import com.example.nightlibrary.core.security.VaultFileManager
+import com.example.nightlibrary.core.security.ZipShareHelper
 import com.example.nightlibrary.entity.ContactEntity
 import com.example.nightlibrary.entity.MediaEntity
 import com.example.nightlibrary.entity.PasswordEntity
@@ -28,6 +31,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -56,6 +60,10 @@ class VaultViewModel(
 
     companion object {
         private const val TAG = "VaultVM"
+
+        // ✅ NEW: Share strategy thresholds
+        private const val ZIP_THRESHOLD = 3          // 3+ files → ZIP
+        private const val LARGE_FILE_MB = 100L       // Files > 100MB get special handling
     }
 
     // ════════════════════════════════════════════════════════════════
@@ -91,6 +99,9 @@ class VaultViewModel(
     val isLaunchingExternalIntent: StateFlow<Boolean> = _isLaunchingExternalIntent.asStateFlow()
 
     private val shareJobs = mutableMapOf<String, Job>()
+
+    // ✅ NEW: Dedicated dispatcher for share operations
+    private val shareDispatcher = Dispatchers.IO.limitedParallelism(3)
 
     // ════════════════════════════════════════════════════════════════
     // CONTACT
@@ -426,20 +437,31 @@ class VaultViewModel(
                 initialValue = emptyList()
             )
 
-    // ✅ FIX: Use SharingStarted.Eagerly for all in-progress flows.
-    //
-    // WHY: WhileSubscribed(5_000) stops the upstream Room query when the
-    // fragment temporarily loses its collector (e.g. during navigation to/from
-    // the vault, the In-Progress tab scrolling offscreen, or any brief UI
-    // re-composition). During that 5-second grace window the DB can update
-    // progress many times but the StateFlow never sees those emissions.
-    // When the collector re-subscribes it gets a stale snapshot and shows
-    // "frozen" progress bars.
-    //
-    // Eagerly keeps the Room query alive for the entire ViewModel lifetime
-    // (which is tied to the Activity, not individual fragments). The cost is
-    // one persistent DB listener while the app is open — negligible compared
-    // to missing dozens of progress updates per second during an active download.
+    // 🔒 PRIVATE MEDIA
+    val privateMediaCompleted: StateFlow<List<MediaEntity>> =
+        mediaRepository.getPrivateCompleted()
+            .stateIn(
+                scope = viewModelScope,
+                started = SharingStarted.WhileSubscribed(5_000),
+                initialValue = emptyList()
+            )
+
+    val privateMediaInProgress: StateFlow<List<MediaEntity>> =
+        mediaRepository.getPrivateInProgress()
+            .stateIn(
+                scope = viewModelScope,
+                started = SharingStarted.WhileSubscribed(5_000),
+                initialValue = emptyList()
+            )
+
+    val totalPrivateCount: StateFlow<Int> =
+        combine(privateMediaCompleted, privateMediaInProgress) { completed, inProgress ->
+            completed.size + inProgress.size
+        }.stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5_000),
+            initialValue = 0
+        )
 
     val activeDownloads: StateFlow<List<MediaEntity>> =
         mediaRepository.getActiveDownloads()
@@ -511,7 +533,7 @@ class VaultViewModel(
     }
 
     // ════════════════════════════════════════════════════════════════
-    // MEDIA SHARE OPERATIONS (unchanged)
+    // MEDIA SHARE OPERATIONS — UPDATED WITH SMART STRATEGY
     // ════════════════════════════════════════════════════════════════
 
     fun startShareOperation(mediaIds: List<Long>): String {
@@ -526,13 +548,19 @@ class VaultViewModel(
         }
 
         val fileNames = toShare.map { it.fileName }
+        val shouldZip = toShare.size >= ZipShareHelper.AUTO_ZIP_THRESHOLD
 
         val task = ShareTask(
             id = taskId,
             mediaIds = mediaIds,
             fileNames = fileNames,
             totalFiles = toShare.size,
-            status = "Preparing ${toShare.size} file(s)…"
+            status = if (shouldZip) {
+                "Preparing ${toShare.size} files for ZIP…"
+            } else {
+                "Preparing ${toShare.size} file(s)…"
+            },
+            isZipped = shouldZip
         )
 
         _activeShareTasks.update { current -> current + task }
@@ -545,47 +573,58 @@ class VaultViewModel(
         val job = viewModelScope.launch(Dispatchers.IO) {
             val tempFiles = mutableListOf<File>()
             try {
-                //val tempFiles = mutableListOf<File>()
+                val startTime = System.currentTimeMillis()
 
-                // ✅ FIX: Decrypt all files in parallel instead of sequentially.
-                // For N files each taking ~T seconds, total time drops from N×T → T.
-                val perFilePct = 100.0 / toShare.size
+                // ═══════════════════════════════════════════════════
+                // PHASE 1: Parallel Decryption (same for both paths)
+                // ═══════════════════════════════════════════════════
+
+                val decryptPct = if (shouldZip) 70 else 100  // Reserve 30% for ZIP phase
+                val perFilePct = decryptPct.toDouble() / toShare.size
                 val fileProgressArray = IntArray(toShare.size) { 0 }
 
+                updateShareTask(taskId) { t ->
+                    t.copy(status = "Decrypting ${toShare.size} file(s)…")
+                }
+
                 val deferred = toShare.mapIndexed { index, media ->
-                    async {
-                        val vaultFileManager = VaultFileManager(application)
-                        val temp = vaultFileManager.decryptToTempFile(
-                            File(media.vaultFolder),
-                            media.mimeType.ifEmpty { "application/octet-stream" },
-                            media.id
-                        ) { chunkProgress ->
+                    async(shareDispatcher) {
+                        ensureActive()
+
+                        val shareHelper = SecureShareHelper(application)
+                        val vaultFolder = shareHelper.resolveVaultFolder(media)
+
+                        val safeName = media.fileName
+                            .replace(Regex("[^a-zA-Z0-9._ -]"), "_")
+                            .trim().take(100)
+                        val ext = getFileExtension(media)
+                        val outFile = File(
+                            getShareDir(),
+                            "${safeName}_${System.currentTimeMillis()}.$ext"
+                        )
+
+                        shareHelper.decryptToFile(vaultFolder, outFile) { chunkProgress ->
                             fileProgressArray[index] = chunkProgress
-                            // Overall = average progress across all files
-                            val overall = (fileProgressArray.sum() * perFilePct / 100.0)
-                                .toInt().coerceIn(0, 99)
+                            val overall = fileProgressArray.indices.sumOf { i ->
+                                (fileProgressArray[i] * perFilePct / 100.0).toInt()
+                            }.coerceIn(0, decryptPct - 1)
+
                             updateShareTask(taskId) { t ->
                                 t.copy(
                                     currentFileIndex = index,
                                     currentFileProgress = chunkProgress,
                                     overallProgress = overall,
-                                    status = "Decrypting ${media.fileName.take(20)}…"
+                                    status = "Decrypting ${index + 1}/${toShare.size}…"
                                 )
                             }
                         }
 
-                        val safeName = media.fileName
-                            .replace(Regex("[^a-zA-Z0-9._ -]"), "_")
-                            .trim().take(100)
-                        val named = File(temp.parent, safeName)
-                        if (named.exists()) named.delete()
-                        if (temp.renameTo(named)) named else temp
+                        outFile
                     }
                 }
 
-                // Check for cancellation before awaiting
-                val currentTask = _activeShareTasks.value.find { it.id == taskId }
-                if (currentTask?.isCancelled == true || !isActive) {
+                // Check cancellation
+                if (_activeShareTasks.value.find { it.id == taskId }?.isCancelled == true) {
                     deferred.forEach { it.cancel() }
                     return@launch
                 }
@@ -593,27 +632,81 @@ class VaultViewModel(
                 val shareFiles = deferred.awaitAll()
                 tempFiles.addAll(shareFiles)
 
-                val uris = ArrayList<Uri>()
-                shareFiles.forEach { shareFile ->
-                    if (shareFile.exists() && shareFile.length() > 0) {
+                val validFiles = shareFiles.filter { it.exists() && it.length() > 0 }
+                if (validFiles.isEmpty()) {
+                    updateShareTask(taskId) { t ->
+                        t.copy(error = "No files could be decrypted", isCompleted = true)
+                    }
+                    return@launch
+                }
+
+                val decryptTime = System.currentTimeMillis() - startTime
+                Log.d(TAG, "Decryption phase: ${validFiles.size} files in ${decryptTime}ms")
+
+                // ═══════════════════════════════════════════════════
+                // PHASE 2: Share Strategy — ZIP or Direct
+                // ═══════════════════════════════════════════════════
+
+                val uris: ArrayList<Uri>
+
+                if (shouldZip && validFiles.size >= ZipShareHelper.AUTO_ZIP_THRESHOLD) {
+                    // ── ZIP PATH ──────────────────────────────────
+                    updateShareTask(taskId) { t ->
+                        t.copy(
+                            overallProgress = 70,
+                            status = "Creating ZIP archive…"
+                        )
+                    }
+
+                    val displayNames = toShare.map { it.fileName }
+                    val zipFile = ZipShareHelper.createZip(
+                        files = validFiles,
+                        names = displayNames,
+                        outputDir = getShareDir()
+                    ) { zipProgress ->
+                        val overall = 70 + (zipProgress * 30 / 100)
+                        updateShareTask(taskId) { t ->
+                            t.copy(
+                                overallProgress = overall.coerceIn(70, 99),
+                                status = "Zipping… $zipProgress%"
+                            )
+                        }
+                    }
+
+                    tempFiles.add(zipFile)
+
+                    val zipUri = FileProvider.getUriForFile(
+                        application,
+                        "${application.packageName}.fileprovider",
+                        zipFile
+                    )
+                    uris = arrayListOf(zipUri)
+
+                    // Clean up individual decrypted files (ZIP has the data now)
+                    validFiles.forEach { file ->
+                        try { file.delete() } catch (_: Exception) {}
+                    }
+                    tempFiles.removeAll(validFiles)
+
+                    val zipTime = System.currentTimeMillis() - startTime - decryptTime
+                    Log.d(TAG, "ZIP phase: ${zipFile.length()} bytes in ${zipTime}ms")
+
+                } else {
+                    // ── DIRECT PATH (1-2 files) ───────────────────
+                    uris = ArrayList()
+                    validFiles.forEach { file ->
                         val uri = FileProvider.getUriForFile(
                             application,
                             "${application.packageName}.fileprovider",
-                            shareFile
+                            file
                         )
                         uris.add(uri)
                     }
                 }
 
-                if (uris.isEmpty()) {
-                    updateShareTask(taskId) { t ->
-                        t.copy(
-                            error = "No files could be decrypted",
-                            isCompleted = true
-                        )
-                    }
-                    return@launch
-                }
+                // ═══════════════════════════════════════════════════
+                // PHASE 3: Launch Share Intent
+                // ═══════════════════════════════════════════════════
 
                 updateShareTask(taskId) { t ->
                     t.copy(
@@ -623,11 +716,18 @@ class VaultViewModel(
                         isCompleted = true
                     )
                 }
+
                 viewModelScope.launch {
                     _operationEvents.emit(OperationEvent.TaskCompleted)
                 }
+
+                val totalTime = System.currentTimeMillis() - startTime
+                Log.d(TAG, "✅ Share ready in ${totalTime}ms " +
+                        "(${validFiles.size} files, zip=$shouldZip, " +
+                        "${uris.size} URI(s))")
+
                 withContext(Dispatchers.Main) {
-                    launchShareIntent(uris, toShare.size)
+                    launchShareIntent(uris, toShare.size, shouldZip)
                 }
 
                 withContext(kotlinx.coroutines.NonCancellable) {
@@ -636,9 +736,6 @@ class VaultViewModel(
                 }
 
             } catch (e: kotlinx.coroutines.CancellationException) {
-                // ✅ FIX: delay() inside catch(CancellationException) re-throws immediately
-                // because the job is already cancelled — removeShareTask was never reached.
-                // withContext(NonCancellable) lets cleanup run even after cancellation.
                 withContext(kotlinx.coroutines.NonCancellable) {
                     Log.d(TAG, "Share task $taskId cancelled — cleaning up")
                     cleanupTempFiles(tempFiles)
@@ -659,6 +756,29 @@ class VaultViewModel(
         shareJobs[taskId] = job
         return taskId
     }
+
+    private fun getFileExtension(media: MediaEntity): String {
+        val ext = media.fileName.substringAfterLast('.', "").lowercase()
+        if (ext.isNotEmpty() && ext.length <= 5) return ext
+
+        return when {
+            media.mimeType.contains("mp4") -> "mp4"
+            media.mimeType.contains("mkv") || media.mimeType.contains("matroska") -> "mkv"
+            media.mimeType.contains("webm") -> "webm"
+            media.mimeType.contains("mp3") || media.mimeType.contains("mpeg") -> "mp3"
+            media.mimeType.contains("m4a") -> "m4a"
+            media.mimeType.contains("jpeg") || media.mimeType.contains("jpg") -> "jpg"
+            media.mimeType.contains("png") -> "png"
+            media.mimeType.contains("pdf") -> "pdf"
+            media.fileType == "video" -> "mp4"
+            media.fileType == "audio" -> "mp3"
+            media.fileType == "image" -> "jpg"
+            else -> "bin"
+        }
+    }
+
+    private fun getShareDir(): File =
+        File(application.filesDir, "vault_share").also { it.mkdirs() }
 
     fun cancelShare(taskId: String) {
         Log.d(TAG, "Cancelling share: $taskId")
@@ -695,13 +815,46 @@ class VaultViewModel(
         }
     }
 
-    private fun launchShareIntent(uris: ArrayList<Uri>, fileCount: Int) {
+    private fun launchShareIntent(
+        uris: ArrayList<Uri>,
+        fileCount: Int,
+        isZipped: Boolean = false
+    ) {
         try {
+            // ✅ Pre-cache all URI metadata to prevent FileProvider query storms
+            uris.forEach { uri ->
+                try {
+                    val file = File(
+                        application.filesDir,
+                        "vault_share/${uri.lastPathSegment}"
+                    )
+                    if (file.exists()) {
+                        val mimeType = if (isZipped) "application/zip"
+                        else getMimeFromFileName(file.name)
+
+                        CachingFileProvider.preCache(
+                            uri = uri,
+                            name = file.name,
+                            size = file.length(),
+                            mimeType = mimeType
+                        )
+                    }
+                } catch (e: Exception) {
+                    Log.w(TAG, "Pre-cache failed for $uri: ${e.message}")
+                }
+            }
+
             val shareIntent = if (uris.size == 1) {
                 Intent(Intent.ACTION_SEND).apply {
-                    type = "*/*"
+                    type = if (isZipped) "application/zip" else "*/*"
                     putExtra(Intent.EXTRA_STREAM, uris[0])
                     addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                    if (isZipped) {
+                        putExtra(
+                            Intent.EXTRA_SUBJECT,
+                            "NightLibrary — $fileCount files"
+                        )
+                    }
                 }
             } else {
                 Intent(Intent.ACTION_SEND_MULTIPLE).apply {
@@ -711,21 +864,48 @@ class VaultViewModel(
                 }
             }
 
-            val chooser = Intent.createChooser(shareIntent, "Share $fileCount file(s)")
-                .addFlags(
-                    Intent.FLAG_ACTIVITY_NEW_TASK or
-                            Intent.FLAG_GRANT_READ_URI_PERMISSION
-                )
+            val chooser = Intent.createChooser(
+                shareIntent,
+                if (isZipped) "Share $fileCount files (ZIP)"
+                else "Share $fileCount file(s)"
+            ).addFlags(
+                Intent.FLAG_ACTIVITY_NEW_TASK or
+                        Intent.FLAG_GRANT_READ_URI_PERMISSION
+            )
 
-            // ✅ FIX: Prevent auth trigger when user returns from the share target
-            // (Gmail, WhatsApp, etc.). Must be set BEFORE startActivity() because
-            // the system calls MainActivity.onStop() synchronously on the next frame.
             (application as? NightLibraryApp)?.isIgnoringNextLock = true
-
             application.startActivity(chooser)
+
         } catch (e: Exception) {
             Log.e(TAG, "Share intent failed: ${e.message}", e)
             (application as? NightLibraryApp)?.isIgnoringNextLock = false
+        } finally {
+            // ✅ Schedule cache cleanup after share completes
+            viewModelScope.launch {
+                kotlinx.coroutines.delay(60_000) // 1 minute
+                CachingFileProvider.clearCache()
+            }
+        }
+    }
+
+    private fun getMimeFromFileName(name: String): String {
+        val ext = name.substringAfterLast('.', "").lowercase()
+        return when (ext) {
+            "jpg", "jpeg" -> "image/jpeg"
+            "png" -> "image/png"
+            "gif" -> "image/gif"
+            "webp" -> "image/webp"
+            "mp4" -> "video/mp4"
+            "mkv" -> "video/x-matroska"
+            "webm" -> "video/webm"
+            "mp3" -> "audio/mpeg"
+            "m4a" -> "audio/mp4"
+            "wav" -> "audio/wav"
+            "ogg" -> "audio/ogg"
+            "flac" -> "audio/flac"
+            "pdf" -> "application/pdf"
+            "zip" -> "application/zip"
+            else -> "application/octet-stream"
         }
     }
 
@@ -745,7 +925,7 @@ class VaultViewModel(
             (application as? NightLibraryApp)?.isIgnoringNextLock = true
             application.startActivity(chooser)
         } catch (e: Exception) {
-            Log.e(TAG, "Text share failed: ${e.message}", e)
+            Log.e(TAG, "text share failed: ${e.message}", e)
             (application as? NightLibraryApp)?.isIgnoringNextLock = false
         }
     }

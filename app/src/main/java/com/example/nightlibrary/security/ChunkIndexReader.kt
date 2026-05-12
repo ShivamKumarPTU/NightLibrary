@@ -1,15 +1,24 @@
-package com.example.nightlibrary.core.security
+package com.example.nightlibrary.security
 
-import com.example.nightlibrary.security.ChunkIndex
 import org.json.JSONObject
 import java.io.File
 
 class ChunkIndexReader {
 
-    fun read(folder: File): ChunkIndex = readIndex(folder)
+    fun read(folder: File): ChunkIndex? {
+        return try {
+            val index = readIndex(folder)
+            if (index.chunkCount <= 0 || index.totalFileSize <= 0) return null
+            index
+        } catch (e: Exception) {
+            null
+        }
+    }
 
     fun readIndex(folder: File): ChunkIndex {
         val indexFile = File(folder, "index.json")
+        if (!indexFile.exists()) throw NoSuchFileException(indexFile)
+        
         val json = JSONObject(indexFile.readText())
 
         return ChunkIndex(

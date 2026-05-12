@@ -14,6 +14,10 @@
         path="vault_share/" />
 
     <cache-path
+        name="pdf_cache"
+        path="pdf_cache/" />
+
+    <cache-path
         name="cache"
         path="." />
 

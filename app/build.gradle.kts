@@ -1,34 +1,53 @@
+import org.jetbrains.kotlin.gradle.dsl.JvmTarget
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
     id("kotlin-parcelize")
     alias(libs.plugins.navigation.safeargs)
     alias(libs.plugins.ksp)
+    alias(libs.plugins.hilt)
 }
 
 android {
     namespace = "com.example.nightlibrary"
-    compileSdk = 36
-
-
-
+    compileSdk = 35
+    // compileSdkExtension = 19
+    ndkVersion = "27.0.12077973"
     defaultConfig {
         applicationId = "com.example.nightlibrary"
-        minSdk = 29
-        targetSdk = 36
+        minSdk = 31
+        targetSdk = 35
         versionCode = 1
         versionName = "1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+        ndk {
+            abiFilters += listOf("arm64-v8a", "armeabi-v7a", "x86_64", "x86")
+        }
+        externalNativeBuild {
+            cmake {
+                cppFlags("")
+                arguments("-DANDROID_ALIGNED_16K=ON")
+            }
+        }
     }
-    packaging {
+
+    packagingOptions {
         jniLibs {
             useLegacyPackaging = true
+            // 🔥 CRITICAL: Don't strip yt-dlp's bundled binaries
+            keepDebugSymbols += listOf(
+                "**/libpython.zip.so",
+                "**/libffmpeg.zip.so",
+                "**/libaria2c.zip.so"
+            )
         }
         resources {
             excludes += "/META-INF/versions/9/OSGI-INF/MANIFEST.MF"
         }
     }
+
     buildTypes {
         release {
             isMinifyEnabled = false
@@ -38,17 +57,23 @@ android {
             )
         }
     }
+
     compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_11
-        targetCompatibility = JavaVersion.VERSION_11
+        sourceCompatibility = JavaVersion.VERSION_17
+        targetCompatibility = JavaVersion.VERSION_17
     }
-    kotlinOptions {
-        jvmTarget = "11"
-    }
+
     buildFeatures {
         buildConfig = true
         viewBinding = true
         dataBinding = true
+    }
+}
+
+// ✅ Moved OUTSIDE the android block
+kotlin {
+    compilerOptions {
+        jvmTarget.set(JvmTarget.JVM_17)
     }
 }
 
@@ -65,22 +90,11 @@ dependencies {
     implementation(libs.androidx.preference.ktx)
     implementation(libs.cronet.embedded)
     implementation(libs.androidx.core.animation)
-    implementation(libs.identity.jvm)
     implementation(libs.androidx.exifinterface)
-    testImplementation(libs.junit)
-    testImplementation(libs.androidx.work.testing)
-    testImplementation("androidx.test.ext:junit:1.1.5")
-    testImplementation("androidx.test:core:1.5.0")
-    testImplementation("org.robolectric:robolectric:4.11.1")
-    androidTestImplementation(libs.androidx.junit)
-    androidTestImplementation(libs.androidx.espresso.core)
     implementation(libs.androidx.biometric)
-    //lottie animation
-
-    val lottieVersion = "6.7.0"
-
     implementation(libs.lottie)
     implementation(libs.androidx.security.crypto)
+
     // Retrofit
     implementation(libs.retrofit.core)
     implementation(libs.retrofit.gson)
@@ -89,25 +103,51 @@ dependencies {
     implementation(libs.okhttp.core)
     implementation(libs.okhttp.logging)
     implementation(libs.okhttp.urlconnection)
+
+    // Room
     implementation(libs.androidx.room.paging)
     implementation(libs.room.ktx)
-    // For Kotlin Coroutines support (recommended)
     implementation(libs.room.runtime)
-    // WorkManager for background tasks
     ksp(libs.room.compiler)
+
+    // Coroutines
     implementation(libs.coroutines.android)
     implementation(libs.coroutines.play.services)
-    implementation(libs.androidx.work.runtime.ktx)
-// Recycler view card animaton
 
+    // WorkManager
+    implementation(libs.androidx.work.runtime.ktx)
+
+    // SQLCipher
     implementation(libs.sqlcipher)
-// media 3
+
+    // Media3
     implementation(libs.androidx.media3.exoplayer)
     implementation(libs.androidx.media3.ui)
-    // pdf
-    implementation ("com.github.mhiew:android-pdf-viewer:3.2.0-beta.3")
+
+    // Hilt
+    implementation(libs.hilt.android)
+    ksp(libs.hilt.compiler)
+
+    // PDF
+    implementation(libs.android.pdf.viewer)
+
+    // YouTube DL
     implementation(libs.youtubedl.android)
     implementation(libs.youtubedl.ffmpeg)
-    implementation("androidx.paging:paging-runtime-ktx:3.2.1")
+    implementation(libs.youtubedl.aria2c)
+
+    // Paging
+    implementation("androidx.paging:paging-runtime-ktx:3.4.2")
+
+    // PhotoView
     implementation("com.github.chrisbanes:PhotoView:2.3.0")
+
+    // Testing
+    testImplementation(libs.junit)
+    testImplementation(libs.androidx.work.testing)
+    testImplementation("androidx.test.ext:junit:1.3.0")
+    testImplementation("androidx.test:core:1.7.0")
+    testImplementation("org.robolectric:robolectric:4.16.1")
+    androidTestImplementation(libs.androidx.junit)
+    androidTestImplementation(libs.androidx.espresso.core)
 }

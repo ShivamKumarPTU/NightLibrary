@@ -10,6 +10,7 @@ import com.example.nightlibrary.entity.MediaEntity
 import java.io.File
 import java.io.FileOutputStream
 
+@Suppress("NULLABILITY_MISMATCH_BASED_ON_JAVA_ANNOTATIONS")
 class ThumbnailManager(private val context: Context) {
 
     fun generateThumbnail(media: MediaEntity): File {

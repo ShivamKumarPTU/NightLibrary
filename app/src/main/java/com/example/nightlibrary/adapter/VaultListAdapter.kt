@@ -55,7 +55,7 @@ class VaultListAdapter(
     override fun getItemViewType(position: Int): Int {
         val item = getItem(position) ?: return TYPE_LIST
         if (!item.isCompleted) return TYPE_PROGRESS
-        
+
         return when (item.fileType) {
             "image" -> TYPE_PHOTO
             "video" -> TYPE_VIDEO
@@ -90,18 +90,18 @@ class VaultListAdapter(
             is ProgressVH -> holder.bind(item)
         }
 
-        holder.itemView.setOnClickListener  { 
+        holder.itemView.setOnClickListener  {
             val currentPos = holder.bindingAdapterPosition
             if (currentPos != RecyclerView.NO_POSITION && currentPos < currentList.size) {
-                onItemClick(getItem(currentPos)) 
+                onItemClick(getItem(currentPos))
             }
         }
-        holder.itemView.setOnLongClickListener { 
+        holder.itemView.setOnLongClickListener {
             val currentPos = holder.bindingAdapterPosition
             if (currentPos != RecyclerView.NO_POSITION && currentPos < currentList.size) {
                 onLongClick(getItem(currentPos))
             }
-            true 
+            true
         }
     }
 
@@ -202,7 +202,7 @@ class VaultListAdapter(
             b.tvProgTitle.text   = item.fileName
             b.progressBar.progress = item.progress
             b.tvPercent.text = "${item.progress}%"
-            
+
             val downloadedStr = Formatter.formatShortFileSize(itemView.context, item.resumeBytes)
             val totalStr = if (item.fileSize > 0) Formatter.formatShortFileSize(itemView.context, item.fileSize) else "..."
             b.tvProgSize.text = "$downloadedStr / $totalStr"
@@ -255,7 +255,7 @@ class VaultListAdapter(
                         if (currentItem.isPaused) mgr.resumeDownload(currentItem) else mgr.pauseDownload(currentItem)
                     }
                 }
-                b.btnCancel.setOnClickListener { 
+                b.btnCancel.setOnClickListener {
                     val currentPos = bindingAdapterPosition
                     if (currentPos != RecyclerView.NO_POSITION && currentPos < currentList.size) {
                         onCancelClick(getItem(currentPos))
@@ -264,7 +264,7 @@ class VaultListAdapter(
                 b.progressBar.isIndeterminate = item.progress == 0 && !item.isPaused
 
                 // Reset click listener while downloading
-                b.root.setOnClickListener { 
+                b.root.setOnClickListener {
                     val currentPos = bindingAdapterPosition
                     if (currentPos != RecyclerView.NO_POSITION && currentPos < currentList.size) {
                         onItemClick(getItem(currentPos))
@@ -290,12 +290,12 @@ class VaultListAdapter(
 
     class Diff : DiffUtil.ItemCallback<MediaEntity>() {
         override fun areItemsTheSame(o: MediaEntity, n: MediaEntity)   = o.id == n.id
-        override fun areContentsTheSame(o: MediaEntity, n: MediaEntity) = 
-            o.progress == n.progress && 
-            o.isPaused == n.isPaused && 
-            o.isCompleted == n.isCompleted && 
-            o.resumeBytes == n.resumeBytes &&
-            o.fileSize == n.fileSize &&
-            o.fileName == n.fileName
+        override fun areContentsTheSame(o: MediaEntity, n: MediaEntity) =
+            o.progress == n.progress &&
+                    o.isPaused == n.isPaused &&
+                    o.isCompleted == n.isCompleted &&
+                    o.resumeBytes == n.resumeBytes &&
+                    o.fileSize == n.fileSize &&
+                    o.fileName == n.fileName
     }
 }
