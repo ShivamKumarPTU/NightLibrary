@@ -27,46 +27,56 @@ The application provides a calm, distraction-free interface while keeping saved 
 
 ---
 
-## 🧠 Description
+🔐 Security & Encryption
 
-NightLibrary is designed for users who want a secure and private space to store personal content and access it offline without exposing it to the system gallery or file managers.
+Security is the core of NightLibrary, not an afterthought. All sensitive data — both metadata and file contents — is encrypted at rest using AES-256.
 
-Users can:
 
-- Save supported media directly from links  
-- Import personal photos and videos  
-- Store confidential passwords  
-- Maintain private contact lists  
-- Instantly save content using a floating quick launcher  
-- Browse content in incognito mode without storing session data  
+Encrypted database (SQLCipher): All app metadata (vault entries, file references, tags, notes, sensitive text) is stored in a SQLCipher-encrypted SQLite database layered under Room, so the entire database file is unreadable without the derived key — not just individual fields.
+Chunk-based file encryption: Media files (photos, videos, documents) are encrypted using AES-256 in fixed-size chunks rather than as a single monolithic blob. This allows:
 
-All saved content remains securely stored within the app's private directory and protected using PIN or biometric authentication.
+Large media files to be encrypted/decrypted incrementally instead of loading the full file into memory
+Faster partial reads (e.g., generating thumbnails or previews without decrypting an entire large video)
+Lower memory footprint on lower-end Android devices
 
----
 
-## 🛠️ Tech Stack
 
-- Kotlin
-- MVVM Architecture
-- Room Database
-- Android DownloadManager
-- Biometric Authentication API
-- Foreground Service (Floating Launcher)
-- Encrypted Shared Preferences
-- WebView (Incognito Mode)
+Zero cloud, zero analytics: No file, thumbnail, or metadata ever leaves the device. No third-party analytics or crash-reporting SDKs are bundled that could leak usage patterns.
+Disguised UX layer: The app presents as a night-reading companion by default, keeping the existence of the vault non-obvious at a glance.
 
----
+🏗️ Architecture
 
-## 🧱 Architecture
+Built on a clean, testable Android architecture:
 
-MVVM-based modular architecture with dedicated modules for:
 
-- Authentication
-- Vault Management
-- Media Import & Download
-- Floating Launcher Service
-- Browser & Incognito Mode
-- Settings & Privacy Controls
+Pattern: MVVM + Repository
+Dependency Injection: Hilt
+Concurrency: Kotlin Coroutines for structured background work
+Persistence: Room (on top of SQLCipher-encrypted SQLite)
+Background Work: WorkManager for durable, retryable operations
+Storage: Scoped Storage API (Android 11+ compliant)
+
+
+UI Layer (Compose/Views)
+        ↓
+ViewModel (state holder)
+        ↓
+Repository (single source of truth)
+        ↓
+┌─────────────────┬──────────────────┐
+Room + SQLCipher    Chunked File Encryption
+(encrypted metadata)   (encrypted media)
+
+
+
+📱 Why NightLibrary
+
+Most "vault" or "hide photos" apps on the Play Store either rely on basic obfuscation (renaming file extensions, hiding via .nomedia) or encrypt files as single large blobs, which is slow and memory-heavy on real devices. NightLibrary was built to solve both problems properly:
+
+
+Real encryption, not obfuscation — SQLCipher for metadata + AES-256 chunk-based encryption for files means there's no unencrypted copy of your data sitting on disk.
+Performance on real hardware — Chunked encryption keeps memory usage low and previews fast, even for large videos, instead of decrypting entire files just to show a thumbnail.
+
 
 
 
