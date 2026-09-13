@@ -33,7 +33,6 @@ Security is the core of NightLibrary, not an afterthought. All sensitive data �
 - ⚡ Floating Quick Launcher (Quick Save)
 - 📋 Clipboard-Based Media Save
 - 🔕 Silent Download Mode
-- 🌐 Incognito Browsing Mode
 - 🔒 PIN Authentication
 - 🧬 Biometric Unlock Support
 - 🚨 Emergency Lock
@@ -103,13 +102,6 @@ git clone https://github.com/ShivamKumarPTU/NightLibrary.git
 
 Open in Android Studio, sync Gradle, and run on a device/emulator running Android 11 (API 30) or higher.
 
----
-
-## 📄 License
-
-[Add your license here]
-
----
 
 ## 👤 Author
 
